@@ -1,0 +1,1496 @@
+# Missing historical data for 2023-24
+
+## 1 years past
+Has data: 519
+Missing data: 353
+
+- Folarin Balogun
+- RÃºnar Alex RÃºnarsson
+- JurriÃ«n Timber
+- Charles Sagoe
+- Bradley Ibrahim
+- Myles Lewis-Skelly
+- James Sweet
+- Wesley Moraes Ferreira da Silva
+- Pau Torres
+- Moussa Diaby
+- Omari Kellyman
+- NicolÃ² Zaniolo
+- Sam Proctor
+- Kaine Kesler-Hayden
+- Morgan Rogers
+- Joe Gauci
+- Finley Munroe
+- Lander Emery
+- Gavin Kilkenny
+- Justin Kluivert
+- Milos Kerkez
+- IonuÈ Radu
+- Max Aarons
+- Alex Scott
+- Luis Sinisterra
+- Romain Faivre
+- Max Kinsey
+- Enes Ãnal
+- Callan McKenna
+- Mark Flekken
+- Yegor Yarmoliuk
+- Ethan Brierley
+- Ji-Soo Kim
+- Valintino Adedokun
+- Myles Peart-Harris
+- Vincent Angelini
+- HÃ¡kon Valdimarsson
+- Benjamin Fredrick
+- Benjamin Arthur
+- Yunus Konak
+- Simon Adingra
+- Aaron Connolly
+- Mahmoud Dahoud
+- JoÃ£o Pedro Junqueira de Jesus
+- MichaÅ Karbownik
+- Bart Verbruggen
+- Andi Zeqiri
+- Igor Julio dos Santos de Paulo
+- Carlos Baleba
+- Anssumane Fati Vieira
+- Mark OâMahony
+- Benicio Baker-Boaitey
+- Ben Jackson
+- Joshua Duffus
+- Leigh Kavanagh
+- Luca Barrington
+- ValentÃ­n Barco
+- Samy Chouchane
+- NoÃ«l Atom
+- Enock Agyei
+- Ameen Al-Dakhil
+- Samuel Bastien
+- Manuel Benson Hedilazio
+- Jordan Beyer
+- Josh Brownhill
+- Darko Churlinov
+- Jack Cork
+- Dara Costelloe
+- Josh Cullen
+- CJ Egan-Riley
+- Hjalmar Ekdal
+- Lyle Foster
+- Denis Franchi
+- JÃ³hann Berg Gudmundsson
+- Luke McNally
+- Arijanet Muric
+- Dara O'Shea
+- Michael Obafemi
+- Bailey Peacock-Farrell
+- Connor Roberts
+- Jay Rodriguez
+- Charlie Taylor
+- Bobby Thomas
+- Scott Twine
+- Lawrence Vigouroux
+- Victor da Silva
+- Anass Zaroury
+- Sander Berge
+- Zeki Amdouni
+- James Trafford
+- Luca Koleosho
+- Jacob Bruun Larsen
+- Owen Dodgson
+- Wilson Odobert
+- Hannes Delcroix
+- Aaron Ramsey
+- Han-Noah Massengo
+- Mike TrÃ©sor
+- Lorenz Assignon
+- Maxime Esteve
+- Abdul Rahman Baba
+- Malo Gusto
+- Romelu Lukaku Bolingoli
+- Nicolas Jackson
+- Christopher Nkunku
+- Gabriel SÅonina
+- Ãngelo Gabriel Borges Damaceno
+- Ian Maatsen
+- Axel Disasi
+- Lesley Ugochukwu
+- Mason Burstow
+- Lucas BergstrÃ¶m
+- Deivid Washington de Souza EugÃªnio
+- Eddie Beach
+- Diego Manuel Jadon da Silva Moreira
+- ÄorÄe PetroviÄ
+- Ronnie Stutter
+- Alex Matos
+- Josh Brooking
+- Leo Castledine
+- Cesare Casadei
+- Ollie Harrison
+- Jimi Tauriainen
+- Josh Acheampong
+- Teddy Sharman-Lowe
+- Tyrique George
+- Kiano Dyer
+- Ted Curd
+- Zak Sturge
+- Jake O'Brien
+- Joe Whitworth
+- Matheus FranÃ§a de Oliveira
+- Ademola Ola-Adebomi
+- Jadan Raymond
+- Daniel MuÃ±oz
+- Adam Wharton
+- Franco Umeh-Chibueze
+- Roshaun Mathurin
+- JoÃ£o Neves VirgÃ­nia
+- Arnaut Danjuma Groeneveld
+- Lewis Dobbin
+- Youssef Ramalho Chermiti
+- Tyler Onyango
+- Norberto Bercique Gomes Betuncal
+- Mackenzie Hunt
+- Jenson Metcalfe
+- Elijah Campbell
+- Billy Crellin
+- SaÅ¡a LukiÄ
+- Calvin Bassey
+- Luc De Fougerolles
+- Adama TraorÃ©
+- Steven Benda
+- FodÃ© Ballo-TourÃ©
+- Devan Tanton
+- Joshua King
+- Joe Gomez
+- Dominik Szoboszlai
+- Jarell Quansah
+- James McConnell
+- Wataru Endo
+- Ryan Gravenberch
+- Callum Scanlon
+- Treymaurice Nyoni
+- Marcelo de AraÃºjo Pitaluga Filho
+- Conor Bradley
+- Owen Beck
+- Kaide Gordon
+- Lewis Koumas
+- Fabian Mrozek
+- Jayden Danns
+- Amara Nallo
+- Elijah Adebayo
+- Mads Juel Andersen
+- Amari'i Bell
+- Luke Berry
+- Reece Burke
+- Allan Campbell
+- Jordan Clark
+- Alfie Doughty
+- Luke Freeman
+- Matt Macey
+- John McAtee
+- Carlos Mendes Gomes
+- Carlton Morris
+- Admiral Muskwe
+- Chiedozie Ogbene
+- Fred Onyedinma
+- Gabriel Osho
+- Aribim Pepple
+- Dion Pereira
+- Dan Potts
+- Glen Rea
+- James Shea
+- Joe Taylor
+- Elliot Thorpe
+- Jack Walton
+- Louie Watson
+- Cauley Woodrow
+- Teden Mengi
+- Ryan Giles
+- Tom Lockyer
+- Pelly Ruddock Mpanzu
+- Tahith Chong
+- Issa KaborÃ©
+- Thomas Kaminski
+- Jacob Brown
+- Aidan Francis-Clarke
+- Tim Krul
+- Joseph Johnson
+- Jayden Luker
+- Zack Nelson
+- Daiki Hashioka
+- Axel Piesold
+- Dominic Dos Santos Martins
+- Christian Chigozie
+- Taylan Harris
+- Oscar Bobb
+- Mateo KovaÄiÄ
+- JoÅ¡ko Gvardiol
+- JÃ©rÃ©my Doku
+- Mahamadou Susoho
+- Micah Hamilton
+- Jacob Wright
+- Ãlvaro FernÃ¡ndez Carreras
+- Hannibal Mejbri
+- AndrÃ© Onana
+- Rasmus HÃ¸jlund
+- Omari Forson
+- Radek VÃ­tek
+- Daniel Gore
+- Altay Bayindir
+- Sofyan Amrabat
+- Joe Hugill
+- Willy Kambwala
+- Toby Collyer
+- Habeeb Ogunneye
+- Dermot Mee
+- Harry Amass
+- Ethan Wheatley
+- Louis Jackson
+- Isaac Hayden
+- Sandro Tonali
+- Kell Watts
+- Alex Murphy
+- Amadou Diallo
+- Ben Parkinson
+- Michael Ndiweni
+- Joe White
+- Travis Hernes
+- Brandon Aguilera Zamora
+- Josh Bowler
+- Ethan Horvath
+- Hwang Ui-jo
+- Olu Aina
+- Josh Powell
+- Gonzalo Montiel
+- Murillo Santiago Costa dos Santos
+- Odysseas Vlachodimos
+- Andrew Omobamidele
+- NicolÃ¡s DomÃ­nguez
+- Ibrahim SangarÃ©
+- Divock Origi
+- Jamie McDonnell
+- Detlef Esapa Osong
+- Joe Gardner
+- Giovanni Reyna
+- Matz Sels
+- Rodrigo Duarte Ribeiro
+- Auston Trusty
+- Anel AhmedhodÅ¾iÄ
+- Jordan Amissah
+- George Baldock
+- Chris Basham
+- Jayden Bogle
+- Rhian Brewster
+- Ismaila Coulibaly
+- Adam Davies
+- John Egan
+- John Fleck
+- Wes Foderingham
+- Daniel Jebbison
+- Max Lowe
+- Oliver McBurnie
+- Iliman Ndiaye
+- Rhys Norrington-Davies
+- Oliver Norwood
+- Ben Osborn
+- William Osula
+- Jack Robinson
+- Anis Slimane
+- Yasser Larouci
+- BÃ©nie TraorÃ©
+- Vini de Souza Costa
+- Femi Seriki
+- Louie Marsh
+- Andre Brooks
+- Antwoine Hackford
+- Gustavo Hamer
+- Ryan OnÃ©
+- Jili Buyabu
+- Sydie Peck
+- Ben Brereton
+- Ivo Grbic
+- Billy Blacker
+- Oliver Arblaster
+- Dovydas Sasnauskas
+- Sam Curtis
+- Owen Hampson
+- Giovani Lo Celso
+- Tanguy NdombÃ©lÃ© Alvaro
+- Destiny Udogie
+- Guglielmo Vicario
+- Alfie Whiteman
+- Micky van de Ven
+- Alejo VÃ©liz
+- Ashley Phillips
+- Jamie Donley
+- Alfie Dorrington
+- Radu Dragusin
+- Mikey Moore
+- Tyrese Hall
+- VladimÃ­r Coufal
+- TomÃ¡Å¡ SouÄek
+- Nikola VlaÅ¡iÄ
+- Edson Ãlvarez VelÃ¡zquez
+- Konstantinos Mavropanos
+- Mohammed Kudus
+- Lewis Orford
+- Oliver Scarles
+- Callum Marshall
+- George Earthy
+- Tommy Doyle
+- BendegÃºz Bolla
+- FÃ¡bio Silva
+- Joe Hodge
+- Ki-Jana Hoever
+- Bruno Cavaco JordÃ£o
+- Tom King
+- Santiago Bueno
+- Enso GonzÃ¡lez
+- Jean-Ricner Bellegarde
+- Matthew Whittingham
+- Tawanda Chirewa
+- Justin Hubner
+- Owen Hesketh
+- Ty Barnett
+- Yerson Mosquera
+- Noha Lemina
+- Wesley Okoduwa
+- Leon Chiwome
+- Fletcher Holman
+- Temple Ojinnaka
+
+## 2 years past
+Has data: 335
+Missing data: 537
+
+- CÃ©dric Alves Soares
+- Mohamed Elneny
+- FÃ¡bio Ferreira Vieira
+- Gabriel dos Santos MagalhÃ£es
+- Jakub Kiwior
+- Marcus Oliveira Alencar
+- Gabriel Martinelli Silva
+- Eddie Nketiah
+- Benjamin White
+- JurriÃ«n Timber
+- Charles Sagoe
+- Reuell Walters
+- Bradley Ibrahim
+- Myles Lewis-Skelly
+- Ethan Nwaneri
+- Mauro Bandeira
+- James Sweet
+- Alexandre Moreno Lopera
+- Matty Cash
+- Diego Carlos Santos Silva
+- Jhon DurÃ¡n
+- Boubacar Kamara
+- Emiliano MartÃ­nez Romero
+- Wesley Moraes Ferreira da Silva
+- Pau Torres
+- Moussa Diaby
+- Omari Kellyman
+- NicolÃ² Zaniolo
+- Oliwier Zych
+- ClÃ©ment Lenglet
+- Sam Proctor
+- James Wright
+- Kaine Kesler-Hayden
+- Morgan Rogers
+- Joe Gauci
+- Finley Munroe
+- Kadan Young
+- Lander Emery
+- Jaidon Anthony
+- Philip Billing
+- David Brooks
+- Ryan Christie
+- Lewis Cook
+- Siriki DembÃ©lÃ©
+- James Hill
+- Lloyd Kelly
+- Gavin Kilkenny
+- Justin Kluivert
+- Jamal Lowe
+- Emiliano Marcondes
+- Chris Mepham
+- Kieffer Moore
+- Norberto Murara Neto
+- Dango Ouattara
+- Ben Pearson
+- Joe Rothwell
+- Antoine Semenyo
+- Marcos Senesi
+- Adam Smith
+- Dominic Solanke
+- Marcus Tavernier
+- Hamed TraorÃ¨
+- Mark Travers
+- Illia Zabarnyi
+- Milos Kerkez
+- IonuÈ Radu
+- Ben Greenwood
+- Alex Scott
+- Tyler Adams
+- Luis Sinisterra
+- Romain Faivre
+- Max Kinsey
+- Enes Ãnal
+- Dominic Sadi
+- Michael Dacosta Gonzalez
+- Callan McKenna
+- Sergi CanÃ³s TenÃ©s
+- Mikkel Damsgaard
+- Josh Dasilva
+- Mark Flekken
+- Aaron Hickey
+- Keane Lewis-Potter
+- Kevin Schade
+- Thomas Strakosha
+- Ryan Trevitt
+- Yegor Yarmoliuk
+- Michael Olakigbe
+- Ethan Brierley
+- Ji-Soo Kim
+- Valintino Adedokun
+- HÃ¡kon Valdimarsson
+- Benjamin Fredrick
+- Benjamin Arthur
+- Yunus Konak
+- Simon Adingra
+- Yasin Ayari
+- Facundo Buonanotte
+- Mahmoud Dahoud
+- Julio Enciso
+- Pervis EstupiÃ±Ã¡n
+- MichaÅ Karbownik
+- Kacper KozÅowski
+- Solly March
+- Tom McGill
+- Kaoru Mitoma
+- Jeremy Sarmiento Morante
+- Deniz Undav
+- Jan Paul van Hecke
+- Bart Verbruggen
+- Igor Julio dos Santos de Paulo
+- Jack Hinshelwood
+- Carlos Baleba
+- Anssumane Fati Vieira
+- Mark OâMahony
+- Benicio Baker-Boaitey
+- Ben Jackson
+- Joshua Duffus
+- Leigh Kavanagh
+- Luca Barrington
+- Cameron Peupion
+- ValentÃ­n Barco
+- Samy Chouchane
+- NoÃ«l Atom
+- Enock Agyei
+- Ameen Al-Dakhil
+- Samuel Bastien
+- Manuel Benson Hedilazio
+- Jordan Beyer
+- Darko Churlinov
+- Josh Cullen
+- CJ Egan-Riley
+- Hjalmar Ekdal
+- Lyle Foster
+- Denis Franchi
+- JÃ³hann Berg Gudmundsson
+- Luke McNally
+- Arijanet Muric
+- Dara O'Shea
+- Scott Twine
+- Lawrence Vigouroux
+- Victor da Silva
+- Anass Zaroury
+- David Datro Fofana
+- Sander Berge
+- Zeki Amdouni
+- James Trafford
+- Luca Koleosho
+- Jacob Bruun Larsen
+- Wilson Odobert
+- Hannes Delcroix
+- Han-Noah Massengo
+- Mike TrÃ©sor
+- Lorenz Assignon
+- Maxime Esteve
+- MoisÃ©s Caicedo Corozo
+- Andrey Nascimento dos Santos
+- Abdul Rahman Baba
+- BenoÃ®t Badiashile
+- Ben Chilwell
+- Levi Colwill
+- Marc Cucurella Saseta
+- Enzo FernÃ¡ndez
+- Malo Gusto
+- Romelu Lukaku Bolingoli
+- Noni Madueke
+- Mykhailo Mudryk
+- Nicolas Jackson
+- Christopher Nkunku
+- Gabriel SÅonina
+- Ãngelo Gabriel Borges Damaceno
+- Ian Maatsen
+- Axel Disasi
+- Lesley Ugochukwu
+- Mason Burstow
+- Lucas BergstrÃ¶m
+- RomÃ©o Lavia
+- Bashir Humphreys
+- Deivid Washington de Souza EugÃªnio
+- Eddie Beach
+- Diego Manuel Jadon da Silva Moreira
+- ÄorÄe PetroviÄ
+- Alfie Gilchrist
+- Ronnie Stutter
+- Alex Matos
+- Josh Brooking
+- Leo Castledine
+- Cesare Casadei
+- IshÃ© Samuels-Smith
+- Ollie Harrison
+- Jimi Tauriainen
+- Josh Acheampong
+- Teddy Sharman-Lowe
+- Tyrique George
+- Kiano Dyer
+- Ted Curd
+- Zak Sturge
+- Naouirou Ahamada
+- Cheick DoucourÃ©
+- Malcolm Ebiowei
+- Sam Johnstone
+- Jefferson Lerma SolÃ­s
+- Jake O'Brien
+- Luke Plange
+- Chris Richards
+- Joe Whitworth
+- Matheus FranÃ§a de Oliveira
+- John-Kymani Gordon
+- Ademola Ola-Adebomi
+- David Ozoh
+- Jadan Raymond
+- Daniel MuÃ±oz
+- Adam Wharton
+- Franco Umeh-Chibueze
+- Kaden Rodney
+- Roshaun Mathurin
+- AndrÃ© Tavares Gomes
+- Dele Alli
+- James Garner
+- Idrissa Gueye
+- Amadou Onana
+- JoÃ£o Neves VirgÃ­nia
+- Arnaut Danjuma Groeneveld
+- Youssef Ramalho Chermiti
+- Thomas Cannon
+- Norberto Bercique Gomes Betuncal
+- Mackenzie Hunt
+- Jenson Metcalfe
+- Elijah Campbell
+- Lewis Warrington
+- Billy Crellin
+- Andreas Hoelgebaum Pereira
+- Tom Cairney
+- Ivan Neves Abreu Cavaleiro
+- Bobby De Cordova-Reid
+- Tyrese Francois
+- Anthony Knockaert
+- Terence Kongolo
+- SaÅ¡a LukiÄ
+- Kevin Mbabu
+- Aleksandar MitroviÄ
+- Rodrigo Muniz Carvalho
+- JoÃ£o Palhinha GonÃ§alves
+- Tim Ream
+- Harrison Reed
+- Antonee Robinson
+- Marek RodÃ¡k
+- Kenny Tete
+- Tosin Adarabioyo
+- Carlos VinÃ­cius Alves Morais
+- Harry Wilson
+- Willian Borges da Silva
+- Calvin Bassey
+- Luc De Fougerolles
+- Jay Stansfield
+- Matthew Dibley-Dias
+- Luke Harris
+- Steven Benda
+- FodÃ© Ballo-TourÃ©
+- Devan Tanton
+- Kristian Sekularac
+- Stefan Bajcetic
+- Darwin NÃºÃ±ez Ribeiro
+- Diogo Teixeira da Silva
+- Cody Gakpo
+- Joe Gomez
+- Dominik Szoboszlai
+- Sepp van den Berg
+- Bobby Clark
+- Ben Doak
+- James McConnell
+- Wataru Endo
+- Ryan Gravenberch
+- Luke Chambers
+- Callum Scanlon
+- Treymaurice Nyoni
+- Lewis Koumas
+- Fabian Mrozek
+- Jayden Danns
+- Amara Nallo
+- Elijah Adebayo
+- Mads Juel Andersen
+- Amari'i Bell
+- Luke Berry
+- Reece Burke
+- Allan Campbell
+- Jordan Clark
+- Alfie Doughty
+- Luke Freeman
+- Matt Macey
+- John McAtee
+- Carlos Mendes Gomes
+- Carlton Morris
+- Admiral Muskwe
+- Chiedozie Ogbene
+- Fred Onyedinma
+- Gabriel Osho
+- Aribim Pepple
+- Dion Pereira
+- Dan Potts
+- Glen Rea
+- James Shea
+- Joe Taylor
+- Elliot Thorpe
+- Jack Walton
+- Louie Watson
+- Cauley Woodrow
+- Teden Mengi
+- Tom Lockyer
+- Pelly Ruddock Mpanzu
+- Tahith Chong
+- Issa KaborÃ©
+- Thomas Kaminski
+- Jacob Brown
+- Aidan Francis-Clarke
+- Joseph Johnson
+- Jayden Luker
+- Zack Nelson
+- Daiki Hashioka
+- Axel Piesold
+- Dominic Dos Santos Martins
+- Christian Chigozie
+- Taylan Harris
+- Manuel Akanji
+- JuliÃ¡n Ãlvarez
+- Bernardo Veiga de Carvalho e Silva
+- Oscar Bobb
+- JoÃ£o Cancelo
+- Shea Charles
+- RÃºben Gato Alves Dias
+- Erling Haaland
+- Mateo KovaÄiÄ
+- Rico Lewis
+- Stefan Ortega Moreno
+- MÃ¡ximo Perrone
+- Sergio GÃ³mez
+- Matheus Luiz Nunes
+- JoÅ¡ko Gvardiol
+- JÃ©rÃ©my Doku
+- Mahamadou Susoho
+- Micah Hamilton
+- Jacob Wright
+- Alex Telles
+- Antony Matheus dos Santos
+- Bruno Borges Fernandes
+- Carlos Henrique Casimiro
+- Diogo Dalot Teixeira
+- Ãlvaro FernÃ¡ndez Carreras
+- Alejandro Garnacho
+- Kobbie Mainoo
+- Tyrell Malacia
+- Lisandro MartÃ­nez
+- Facundo Pellistri Rebollo
+- AndrÃ© Onana
+- Rasmus HÃ¸jlund
+- Omari Forson
+- Radek VÃ­tek
+- Daniel Gore
+- Altay Bayindir
+- Sofyan Amrabat
+- Joe Hugill
+- Willy Kambwala
+- Rhys Bennett
+- Toby Collyer
+- Habeeb Ogunneye
+- Dermot Mee
+- Harry Amass
+- Ethan Wheatley
+- Louis Jackson
+- Miguel AlmirÃ³n Rejala
+- Sven Botman
+- Alexander Isak
+- Garang Kuol
+- Javier Manquillo GaitÃ¡n
+- Sandro Tonali
+- Kell Watts
+- Joe Willock
+- Loris Karius
+- Alex Murphy
+- Lewis Miley
+- Amadou Diallo
+- Ben Parkinson
+- Michael Ndiweni
+- Travis Hernes
+- Matt Turner
+- Brandon Aguilera Zamora
+- Harry Arter
+- Taiwo Awoniyi
+- Giulian Biancone
+- Josh Bowler
+- Steve Cook
+- Danilo dos Santos de Oliveira
+- Mohamed DrÃ¤ger
+- Felipe Augusto de Almeida Monteiro
+- Remo Freuler
+- Ethan Horvath
+- Richie Laryea
+- Orel Mangala
+- LoÃ¯c Mbe Soh
+- Scott McKenna
+- Alex Mighten
+- Moussa NiakhatÃ©
+- Lewis O'Brien
+- Braian Ojeda RodrÃ­guez
+- Jonathan Panzo
+- Omar Richards
+- Gustavo Henrique Furtado Scarpa
+- Sam Surridge
+- Harry Toffolo
+- Hwang Ui-jo
+- Joe Worrall
+- Ryan Yates
+- Olu Aina
+- George Shelvey
+- Josh Powell
+- Gonzalo Montiel
+- Murillo Santiago Costa dos Santos
+- Odysseas Vlachodimos
+- NicolÃ¡s DomÃ­nguez
+- Ibrahim SangarÃ©
+- Jamie McDonnell
+- Detlef Esapa Osong
+- Joe Gardner
+- Giovanni Reyna
+- Matz Sels
+- Rodrigo Duarte Ribeiro
+- Auston Trusty
+- Anel AhmedhodÅ¾iÄ
+- Jordan Amissah
+- George Baldock
+- Chris Basham
+- Jayden Bogle
+- Rhian Brewster
+- Ismaila Coulibaly
+- Adam Davies
+- John Egan
+- John Fleck
+- Wes Foderingham
+- Daniel Jebbison
+- Max Lowe
+- Oliver McBurnie
+- Iliman Ndiaye
+- Rhys Norrington-Davies
+- Oliver Norwood
+- Ben Osborn
+- William Osula
+- Jack Robinson
+- Anis Slimane
+- Yasser Larouci
+- BÃ©nie TraorÃ©
+- Vini de Souza Costa
+- Femi Seriki
+- Louie Marsh
+- Andre Brooks
+- Antwoine Hackford
+- Gustavo Hamer
+- Ryan OnÃ©
+- Jili Buyabu
+- Sydie Peck
+- Ben Brereton
+- Ivo Grbic
+- Billy Blacker
+- Oliver Arblaster
+- Dovydas Sasnauskas
+- Sam Curtis
+- Owen Hampson
+- Brennan Johnson
+- Emerson Leite de Souza Junior
+- Tanguy NdombÃ©lÃ© Alvaro
+- Pedro Porro
+- Ivan PeriÅ¡iÄ
+- Pape Matar Sarr
+- Son Heung-min
+- Djed Spence
+- Destiny Udogie
+- Guglielmo Vicario
+- Alfie Whiteman
+- Manor Solomon
+- Micky van de Ven
+- Alejo VÃ©liz
+- Ashley Phillips
+- Jamie Donley
+- Alfie Dorrington
+- Yago de Santiago Alonso
+- Radu Dragusin
+- Mikey Moore
+- Tyrese Hall
+- Nayef Aguerd
+- VladimÃ­r Coufal
+- Flynn Downes
+- Pablo Fornals Malla
+- Thilo Kehrer
+- Divin Mubama
+- Lucas Tolentino Coelho de Lima
+- Gianluca Scamacca
+- TomÃ¡Å¡ SouÄek
+- Nikola VlaÅ¡iÄ
+- Edson Ãlvarez VelÃ¡zquez
+- Joseph Anang
+- Mohammed Kudus
+- Lewis Orford
+- Kaelan Casey
+- Oliver Scarles
+- Callum Marshall
+- George Earthy
+- Rayan AÃ¯t-Nouri
+- Daniel Bentley
+- BendegÃºz Bolla
+- Hugo Bueno LÃ³pez
+- FÃ¡bio Silva
+- GonÃ§alo Manuel Ganchinho Guedes
+- Joe Hodge
+- Hwang Hee-chan
+- JoÃ£o Victor Gomes da Silva
+- Bruno Cavaco JordÃ£o
+- Sasa Kalajdzic
+- Tom King
+- Mario Lemina
+- Pablo Sarabia
+- Matija Å arkiÄ
+- Boubacar TraorÃ©
+- Matheus Santos Carneiro Da Cunha
+- Santiago Bueno
+- Enso GonzÃ¡lez
+- Nathan Fraser
+- Jean-Ricner Bellegarde
+- Matthew Whittingham
+- Tawanda Chirewa
+- Justin Hubner
+- Owen Hesketh
+- Ty Barnett
+- Harvey Griffiths
+- Yerson Mosquera
+- Noha Lemina
+- Wesley Okoduwa
+- Leon Chiwome
+- Fletcher Holman
+- Temple Ojinnaka
+
+## 3 years past
+Has data: 283
+Missing data: 589
+
+- Folarin Balogun
+- CÃ©dric Alves Soares
+- Mohamed Elneny
+- FÃ¡bio Ferreira Vieira
+- Gabriel dos Santos MagalhÃ£es
+- Jakub Kiwior
+- Marcus Oliveira Alencar
+- Gabriel Martinelli Silva
+- Eddie Nketiah
+- Takehiro Tomiyasu
+- Benjamin White
+- David Raya Martin
+- JurriÃ«n Timber
+- Karl Hein
+- Charles Sagoe
+- Reuell Walters
+- Bradley Ibrahim
+- Myles Lewis-Skelly
+- Ethan Nwaneri
+- Mauro Bandeira
+- James Sweet
+- Alexandre Moreno Lopera
+- Leon Bailey
+- Emiliano BuendÃ­a Stati
+- Matty Cash
+- Philippe Coutinho Correia
+- Diego Carlos Santos Silva
+- Jhon DurÃ¡n
+- Boubacar Kamara
+- Emiliano MartÃ­nez Romero
+- Viljami Sinisalo
+- Wesley Moraes Ferreira da Silva
+- Pau Torres
+- Moussa Diaby
+- Omari Kellyman
+- Filip Marschall
+- NicolÃ² Zaniolo
+- Oliwier Zych
+- ClÃ©ment Lenglet
+- Sam Proctor
+- Tommi O'Reilly
+- James Wright
+- Kaine Kesler-Hayden
+- Morgan Rogers
+- Joe Gauci
+- Finley Munroe
+- Kadan Young
+- Lander Emery
+- Jaidon Anthony
+- Philip Billing
+- David Brooks
+- Ryan Christie
+- Lewis Cook
+- Siriki DembÃ©lÃ©
+- James Hill
+- Lloyd Kelly
+- Gavin Kilkenny
+- Justin Kluivert
+- Jamal Lowe
+- Emiliano Marcondes
+- Chris Mepham
+- Kieffer Moore
+- Norberto Murara Neto
+- Dango Ouattara
+- Ben Pearson
+- Joe Rothwell
+- Antoine Semenyo
+- Marcos Senesi
+- Adam Smith
+- Dominic Solanke
+- Marcus Tavernier
+- Hamed TraorÃ¨
+- Mark Travers
+- Illia Zabarnyi
+- Milos Kerkez
+- IonuÈ Radu
+- Ben Greenwood
+- Max Aarons
+- Alex Scott
+- Tyler Adams
+- Luis Sinisterra
+- Romain Faivre
+- Max Kinsey
+- Enes Ãnal
+- Dominic Sadi
+- Michael Dacosta Gonzalez
+- Callan McKenna
+- Kristoffer Ajer
+- Ellery Balcombe
+- Shandon Baptiste
+- Mads Bech SÃ¸rensen
+- Mads Bidstrup
+- Sergi CanÃ³s TenÃ©s
+- Nathan Collins
+- Matthew Cox
+- Mikkel Damsgaard
+- Josh Dasilva
+- Halil DerviÅoÄlu
+- Mark Flekken
+- Charlie Goode
+- Rico Henry
+- Aaron Hickey
+- Vitaly Janelt
+- Mathias Jensen
+- Keane Lewis-Potter
+- Bryan Mbeumo
+- Christian NÃ¸rgaard
+- Frank Onyeka
+- Ethan Pinnock
+- Mads Roerslev Rasmussen
+- Kevin Schade
+- Thomas Strakosha
+- Ivan Toney
+- Ryan Trevitt
+- Yoane Wissa
+- Yegor Yarmoliuk
+- Mathias Jorgensen
+- Michael Olakigbe
+- Ethan Brierley
+- Saman Ghoddos
+- Ji-Soo Kim
+- Valintino Adedokun
+- Myles Peart-Harris
+- Vincent Angelini
+- HÃ¡kon Valdimarsson
+- Benjamin Fredrick
+- Benjamin Arthur
+- Yunus Konak
+- Simon Adingra
+- Yasin Ayari
+- Facundo Buonanotte
+- Mahmoud Dahoud
+- Julio Enciso
+- Pervis EstupiÃ±Ã¡n
+- Evan Ferguson
+- JoÃ£o Pedro Junqueira de Jesus
+- MichaÅ Karbownik
+- Kacper KozÅowski
+- Solly March
+- Tom McGill
+- Kaoru Mitoma
+- Jeremy Sarmiento Morante
+- Kjell Scherpen
+- Deniz Undav
+- Jan Paul van Hecke
+- Bart Verbruggen
+- Igor Julio dos Santos de Paulo
+- Jack Hinshelwood
+- Carlos Baleba
+- Anssumane Fati Vieira
+- Mark OâMahony
+- Benicio Baker-Boaitey
+- Ben Jackson
+- Joshua Duffus
+- Leigh Kavanagh
+- Luca Barrington
+- Cameron Peupion
+- ValentÃ­n Barco
+- Samy Chouchane
+- Odeluga Offiah
+- NoÃ«l Atom
+- Enock Agyei
+- Ameen Al-Dakhil
+- Samuel Bastien
+- Manuel Benson Hedilazio
+- Jordan Beyer
+- Darko Churlinov
+- Dara Costelloe
+- Josh Cullen
+- CJ Egan-Riley
+- Hjalmar Ekdal
+- Lyle Foster
+- Denis Franchi
+- JÃ³hann Berg Gudmundsson
+- Luke McNally
+- Arijanet Muric
+- Connor Roberts
+- Scott Twine
+- Lawrence Vigouroux
+- Victor da Silva
+- Wout Weghorst
+- Anass Zaroury
+- David Datro Fofana
+- Zeki Amdouni
+- Luca Koleosho
+- Jacob Bruun Larsen
+- Owen Dodgson
+- Wilson Odobert
+- Hannes Delcroix
+- Aaron Ramsey
+- Han-Noah Massengo
+- Mike TrÃ©sor
+- Lorenz Assignon
+- Maxime Esteve
+- MoisÃ©s Caicedo Corozo
+- Andrey Nascimento dos Santos
+- Abdul Rahman Baba
+- BenoÃ®t Badiashile
+- Trevoh Chalobah
+- Ben Chilwell
+- Levi Colwill
+- Marc Cucurella Saseta
+- Enzo FernÃ¡ndez
+- Malo Gusto
+- Romelu Lukaku Bolingoli
+- Noni Madueke
+- Mykhailo Mudryk
+- Nicolas Jackson
+- Christopher Nkunku
+- Malang Sarr
+- Gabriel SÅonina
+- Thiago Emiliano da Silva
+- Ãngelo Gabriel Borges Damaceno
+- Ian Maatsen
+- Axel Disasi
+- Lesley Ugochukwu
+- Mason Burstow
+- Lucas BergstrÃ¶m
+- RomÃ©o Lavia
+- Bashir Humphreys
+- Deivid Washington de Souza EugÃªnio
+- Eddie Beach
+- Diego Manuel Jadon da Silva Moreira
+- ÄorÄe PetroviÄ
+- Alfie Gilchrist
+- Ronnie Stutter
+- Alex Matos
+- Josh Brooking
+- Leo Castledine
+- Cesare Casadei
+- IshÃ© Samuels-Smith
+- Ollie Harrison
+- Jimi Tauriainen
+- Josh Acheampong
+- Teddy Sharman-Lowe
+- Tyrique George
+- Kiano Dyer
+- Ted Curd
+- Zak Sturge
+- Naouirou Ahamada
+- Cheick DoucourÃ©
+- Malcolm Ebiowei
+- Odsonne Edouard
+- Marc GuÃ©hi
+- Will Hughes
+- Jefferson Lerma SolÃ­s
+- Remi Matthews
+- Jake O'Brien
+- Michael Olise
+- Luke Plange
+- Chris Richards
+- Joe Whitworth
+- Matheus FranÃ§a de Oliveira
+- John-Kymani Gordon
+- Ademola Ola-Adebomi
+- David Ozoh
+- Jadan Raymond
+- Tayo Adaramola
+- Daniel MuÃ±oz
+- Adam Wharton
+- Franco Umeh-Chibueze
+- Kaden Rodney
+- Roshaun Mathurin
+- AndrÃ© Tavares Gomes
+- Dele Alli
+- Idrissa Gueye
+- Vitalii Mykolenko
+- Amadou Onana
+- Nathan Patterson
+- JoÃ£o Neves VirgÃ­nia
+- Ashley Young
+- Arnaut Danjuma Groeneveld
+- Lewis Dobbin
+- Youssef Ramalho Chermiti
+- Thomas Cannon
+- Norberto Bercique Gomes Betuncal
+- Mackenzie Hunt
+- Jenson Metcalfe
+- Elijah Campbell
+- Lewis Warrington
+- Billy Crellin
+- Armando Broja
+- Andreas Hoelgebaum Pereira
+- Ivan Neves Abreu Cavaleiro
+- Bobby De Cordova-Reid
+- SaÅ¡a LukiÄ
+- Kevin Mbabu
+- Rodrigo Muniz Carvalho
+- JoÃ£o Palhinha GonÃ§alves
+- Carlos VinÃ­cius Alves Morais
+- Willian Borges da Silva
+- Calvin Bassey
+- Luc De Fougerolles
+- Jay Stansfield
+- Matthew Dibley-Dias
+- Luke Harris
+- Steven Benda
+- FodÃ© Ballo-TourÃ©
+- Devan Tanton
+- Kristian Sekularac
+- Stefan Bajcetic
+- Darwin NÃºÃ±ez Ribeiro
+- Diogo Teixeira da Silva
+- Cody Gakpo
+- Joe Gomez
+- Ibrahima KonatÃ©
+- Luis DÃ­az
+- Dominik Szoboszlai
+- Sepp van den Berg
+- Jarell Quansah
+- Bobby Clark
+- Ben Doak
+- James McConnell
+- Wataru Endo
+- Ryan Gravenberch
+- Luke Chambers
+- Callum Scanlon
+- Treymaurice Nyoni
+- Marcelo de AraÃºjo Pitaluga Filho
+- Conor Bradley
+- Owen Beck
+- Kaide Gordon
+- Lewis Koumas
+- Fabian Mrozek
+- Jayden Danns
+- Amara Nallo
+- Albert Sambi Lokonga
+- Elijah Adebayo
+- Mads Juel Andersen
+- Amari'i Bell
+- Luke Berry
+- Reece Burke
+- Allan Campbell
+- Jordan Clark
+- Alfie Doughty
+- John McAtee
+- Carlos Mendes Gomes
+- Carlton Morris
+- Admiral Muskwe
+- Chiedozie Ogbene
+- Fred Onyedinma
+- Gabriel Osho
+- Aribim Pepple
+- Dion Pereira
+- Dan Potts
+- Glen Rea
+- James Shea
+- Joe Taylor
+- Elliot Thorpe
+- Jack Walton
+- Louie Watson
+- Cauley Woodrow
+- Ryan Giles
+- Tom Lockyer
+- Pelly Ruddock Mpanzu
+- Issa KaborÃ©
+- Thomas Kaminski
+- Jacob Brown
+- Aidan Francis-Clarke
+- Tim Krul
+- Joseph Johnson
+- Jayden Luker
+- Zack Nelson
+- Daiki Hashioka
+- Axel Piesold
+- Dominic Dos Santos Martins
+- Christian Chigozie
+- Taylan Harris
+- Manuel Akanji
+- JuliÃ¡n Ãlvarez
+- Bernardo Veiga de Carvalho e Silva
+- Oscar Bobb
+- JoÃ£o Cancelo
+- Shea Charles
+- RÃºben Gato Alves Dias
+- Erling Haaland
+- Mateo KovaÄiÄ
+- Rico Lewis
+- Stefan Ortega Moreno
+- MÃ¡ximo Perrone
+- Sergio GÃ³mez
+- Matheus Luiz Nunes
+- JoÅ¡ko Gvardiol
+- JÃ©rÃ©my Doku
+- Mahamadou Susoho
+- Micah Hamilton
+- Jacob Wright
+- Alex Telles
+- Antony Matheus dos Santos
+- Bruno Borges Fernandes
+- Carlos Henrique Casimiro
+- Diogo Dalot Teixeira
+- Christian Eriksen
+- Ãlvaro FernÃ¡ndez Carreras
+- Alejandro Garnacho
+- Kobbie Mainoo
+- Tyrell Malacia
+- Lisandro MartÃ­nez
+- Facundo Pellistri Rebollo
+- RaphaÃ«l Varane
+- Jadon Sancho
+- AndrÃ© Onana
+- Rasmus HÃ¸jlund
+- Omari Forson
+- Radek VÃ­tek
+- Daniel Gore
+- Altay Bayindir
+- Sofyan Amrabat
+- Joe Hugill
+- Willy Kambwala
+- Rhys Bennett
+- Toby Collyer
+- Habeeb Ogunneye
+- Dermot Mee
+- Harry Amass
+- Ethan Wheatley
+- Louis Jackson
+- Lewis Hall
+- Miguel AlmirÃ³n Rejala
+- Harrison Ashby
+- Sven Botman
+- Bruno GuimarÃ£es Rodriguez Moura
+- Alexander Isak
+- Garang Kuol
+- Javier Manquillo GaitÃ¡n
+- Sandro Tonali
+- Kieran Trippier
+- Kell Watts
+- Joe Willock
+- Loris Karius
+- Tino Livramento
+- Alex Murphy
+- Lewis Miley
+- Amadou Diallo
+- Ben Parkinson
+- Michael Ndiweni
+- Joe White
+- Travis Hernes
+- Nuno Varela Tavares
+- Matt Turner
+- Brandon Aguilera Zamora
+- Harry Arter
+- Taiwo Awoniyi
+- Giulian Biancone
+- Josh Bowler
+- Steve Cook
+- Danilo dos Santos de Oliveira
+- Emmanuel Dennis
+- Mohamed DrÃ¤ger
+- Felipe Augusto de Almeida Monteiro
+- Remo Freuler
+- Ethan Horvath
+- Richie Laryea
+- Orel Mangala
+- LoÃ¯c Mbe Soh
+- Scott McKenna
+- Alex Mighten
+- Moussa NiakhatÃ©
+- Lewis O'Brien
+- Braian Ojeda RodrÃ­guez
+- Jonathan Panzo
+- Omar Richards
+- Gustavo Henrique Furtado Scarpa
+- Sam Surridge
+- Harry Toffolo
+- Hwang Ui-jo
+- Joe Worrall
+- Ryan Yates
+- Olu Aina
+- George Shelvey
+- Josh Powell
+- Gonzalo Montiel
+- Murillo Santiago Costa dos Santos
+- Odysseas Vlachodimos
+- Andrew Omobamidele
+- NicolÃ¡s DomÃ­nguez
+- Ibrahim SangarÃ©
+- Jamie McDonnell
+- Detlef Esapa Osong
+- Joe Gardner
+- Giovanni Reyna
+- Matz Sels
+- Rodrigo Duarte Ribeiro
+- Auston Trusty
+- Cameron Archer
+- James McAtee
+- Anel AhmedhodÅ¾iÄ
+- Jordan Amissah
+- Ismaila Coulibaly
+- Adam Davies
+- Rhys Norrington-Davies
+- Anis Slimane
+- Yasser Larouci
+- BÃ©nie TraorÃ©
+- Vini de Souza Costa
+- Louie Marsh
+- Andre Brooks
+- Gustavo Hamer
+- Ryan OnÃ©
+- Jili Buyabu
+- Sydie Peck
+- Ben Brereton
+- Ivo Grbic
+- Billy Blacker
+- Oliver Arblaster
+- Dovydas Sasnauskas
+- Sam Curtis
+- Owen Hampson
+- Brennan Johnson
+- Brandon Austin
+- Rodrigo Bentancur
+- Bryan Gil Salvatierra
+- Emerson Leite de Souza Junior
+- Dejan Kulusevski
+- Tanguy NdombÃ©lÃ© Alvaro
+- Pedro Porro
+- Ivan PeriÅ¡iÄ
+- Cristian Romero
+- Pape Matar Sarr
+- Son Heung-min
+- Djed Spence
+- Destiny Udogie
+- Guglielmo Vicario
+- Alfie Whiteman
+- Manor Solomon
+- Micky van de Ven
+- Alejo VÃ©liz
+- Ashley Phillips
+- Jamie Donley
+- Alfie Dorrington
+- Yago de Santiago Alonso
+- Radu Dragusin
+- Mikey Moore
+- Tyrese Hall
+- Nayef Aguerd
+- Maxwel Cornet
+- VladimÃ­r Coufal
+- Flynn Downes
+- Pablo Fornals Malla
+- Thilo Kehrer
+- Divin Mubama
+- Lucas Tolentino Coelho de Lima
+- Gianluca Scamacca
+- TomÃ¡Å¡ SouÄek
+- Nikola VlaÅ¡iÄ
+- Edson Ãlvarez VelÃ¡zquez
+- Joseph Anang
+- Konstantinos Mavropanos
+- Mohammed Kudus
+- Lewis Orford
+- Kaelan Casey
+- Oliver Scarles
+- Callum Marshall
+- George Earthy
+- Rayan AÃ¯t-Nouri
+- Daniel Bentley
+- BendegÃºz Bolla
+- Hugo Bueno LÃ³pez
+- Francisco Jorge TomÃ¡s Oliveira
+- FÃ¡bio Silva
+- GonÃ§alo Manuel Ganchinho Guedes
+- Joe Hodge
+- Hwang Hee-chan
+- JoÃ£o Victor Gomes da Silva
+- Bruno Cavaco JordÃ£o
+- Sasa Kalajdzic
+- Tom King
+- JosÃ© Malheiro de SÃ¡
+- Pablo Sarabia
+- Matija Å arkiÄ
+- Toti AntÃ³nio Gomes
+- Boubacar TraorÃ©
+- Matheus Santos Carneiro Da Cunha
+- Santiago Bueno
+- Enso GonzÃ¡lez
+- Nathan Fraser
+- Jean-Ricner Bellegarde
+- Matthew Whittingham
+- Tawanda Chirewa
+- Justin Hubner
+- Owen Hesketh
+- Ty Barnett
+- Harvey Griffiths
+- Yerson Mosquera
+- Noha Lemina
+- Wesley Okoduwa
+- Leon Chiwome
+- Fletcher Holman
+- Temple Ojinnaka
+
