@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = BASE_DIR / "Base Data"
 OUTPUT_DIR = BASE_DIR / "historical_player_exports" / "output"
 
 SEASONS = [
@@ -33,6 +33,24 @@ POSITION_MAP = {
     3: "MID",
     4: "FWD",
 }
+POSITION_CODE_MAP = {value: key for key, value in POSITION_MAP.items()}
+INTEGER_SUFFIXES = (
+    "assists",
+    "bonus",
+    "bps",
+    "clean_sheets",
+    "goals_conceded",
+    "goals_scored",
+    "minutes",
+    "own_goals",
+    "penalties_missed",
+    "penalties_saved",
+    "red_cards",
+    "saves",
+    "total_points",
+    "yellow_cards",
+)
+INTEGER_COLS = {"games_played", "gw_games_played"}
 
 def normalize_name(value):
     if pd.isna(value):
@@ -49,6 +67,33 @@ def normalize_name(value):
     return text
 
 
+def normalize_element_type(value):
+    if pd.isna(value):
+        return pd.NA
+    text = str(value).strip().upper()
+    if text in POSITION_CODE_MAP:
+        return POSITION_CODE_MAP[text]
+    try:
+        number = int(float(text))
+    except (TypeError, ValueError):
+        return pd.NA
+    return number if number in POSITION_MAP else pd.NA
+
+
+def load_player_positions(season):
+    path = DATA_DIR / season / "players_raw.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path, encoding="latin-1")
+    df["name_key"] = (
+        df["first_name"].astype(str).str.strip()
+        + " "
+        + df["second_name"].astype(str).str.strip()
+    ).map(normalize_name)
+    df["element_type"] = pd.to_numeric(df.get("element_type"), errors="coerce")
+    return df.dropna(subset=["name_key"]).set_index("name_key")["element_type"].to_dict()
+
+
 def load_cleaned_players(season):
     path = DATA_DIR / season / "cleaned_players.csv"
     df = pd.read_csv(path, encoding="latin-1")
@@ -57,6 +102,13 @@ def load_cleaned_players(season):
         + " "
         + df["second_name"].astype(str).str.strip()
     ).map(normalize_name)
+    if "element_type" in df.columns:
+        df["element_type"] = df["element_type"].map(normalize_element_type)
+    else:
+        df["element_type"] = pd.NA
+    if df["element_type"].isna().all():
+        position_map = load_player_positions(season)
+        df["element_type"] = df["name_key"].map(position_map)
     return df
 
 
@@ -128,7 +180,10 @@ def impute_missing_stats(df):
         "second_name",
         "name_key",
         "position",
+        "element_type",
     }
+    element_type_cols = {col for col in df.columns if col.endswith("element_type")}
+    name_cols.update(element_type_cols)
     for col in df.columns:
         if col.endswith("_first_name") or col.endswith("_second_name"):
             name_cols.add(col)
@@ -165,10 +220,19 @@ def impute_missing_stats(df):
 
 
 def round_numeric(df, decimals=1):
-    name_cols = {"first_name", "second_name"}
+    name_cols = {"first_name", "second_name", "element_type"}
     numeric_cols = [col for col in df.columns if col not in name_cols]
     for col in numeric_cols:
+        if col in INTEGER_COLS or col.endswith(INTEGER_SUFFIXES):
+            continue
         df[col] = pd.to_numeric(df[col], errors="coerce").round(decimals)
+    return df
+
+
+def enforce_integer_columns(df):
+    for col in df.columns:
+        if col in INTEGER_COLS or col.endswith(INTEGER_SUFFIXES) or col.endswith("element_type"):
+            df[col] = pd.to_numeric(df[col], errors="coerce").round(0).astype("Int64")
     return df
 
 
@@ -222,13 +286,21 @@ def main():
         gw_base_agg, gw_position_map = gw_aggregates(season)
         base_positions = base.get("element_type")
         if base_positions is not None:
-            base_positions = pd.to_numeric(base_positions, errors="coerce").map(POSITION_MAP)
-        base["position"] = base["name_key"].map(gw_position_map)
-        if base_positions is not None:
-            base["position"] = base["position"].fillna(base_positions)
+            base_positions = base_positions.map(POSITION_MAP)
+        base["position"] = base_positions
+        if gw_position_map:
+            base["position"] = base["position"].fillna(base["name_key"].map(gw_position_map))
 
         output = base[
-            ["first_name", "second_name", "total_points", "price_now", "name_key", "position"]
+            [
+                "first_name",
+                "second_name",
+                "total_points",
+                "price_now",
+                "element_type",
+                "name_key",
+                "position",
+            ]
         ].copy()
 
         for offset, hist_season in enumerate(historical_seasons(season), start=1):
@@ -254,7 +326,8 @@ def main():
         missing_report = missing_historical_report(output, 3)
         output = impute_missing_stats(output)
         output = round_numeric(output, decimals=1)
-        output = output.drop(columns=["name_key", "position"])
+        output = enforce_integer_columns(output)
+        output = output.drop(columns=["name_key"])
 
         out_path = OUTPUT_DIR / f"historical_players_{season}.csv"
         output.to_csv(out_path, index=False)
