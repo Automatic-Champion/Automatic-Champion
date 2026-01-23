@@ -1,0 +1,115 @@
+{
+  "formation": "4-3-3",
+  "budget": 100.0,
+  "budget_int": 1000,
+  "total_cost_int": 899,
+  "total_cost": 89.9,
+  "total_pred": 1530.29,
+  "meta": {
+    "dropped_invalid_element_type": 17,
+    "invalid_element_type_values": [
+      NaN
+    ]
+  },
+  "players": [
+    {
+      "id": "310.0",
+      "name": "Alisson Ramses Becker",
+      "team": "Liverpool",
+      "position": "GK",
+      "cost_int": 55,
+      "cost": 5.5,
+      "pred": 145.6
+    },
+    {
+      "id": "236.0",
+      "name": "James Tarkowski",
+      "team": "Everton",
+      "position": "DEF",
+      "cost_int": 47,
+      "cost": 4.7,
+      "pred": 97.84
+    },
+    {
+      "id": "219.0",
+      "name": "Jarrad Branthwaite",
+      "team": "Everton",
+      "position": "DEF",
+      "cost_int": 49,
+      "cost": 4.9,
+      "pred": 97.42
+    },
+    {
+      "id": "311.0",
+      "name": "Trent Alexander-Arnold",
+      "team": "Liverpool",
+      "position": "DEF",
+      "cost_int": 72,
+      "cost": 7.2,
+      "pred": 166.34
+    },
+    {
+      "id": "18.0",
+      "name": "William Saliba",
+      "team": "Arsenal",
+      "position": "DEF",
+      "cost_int": 64,
+      "cost": 6.4,
+      "pred": 104.63
+    },
+    {
+      "id": "16.0",
+      "name": "Declan Rice",
+      "team": "Arsenal",
+      "position": "MID",
+      "cost_int": 63,
+      "cost": 6.3,
+      "pred": 119.75
+    },
+    {
+      "id": "345.0",
+      "name": "Kevin De Bruyne",
+      "team": "Man City",
+      "position": "MID",
+      "cost_int": 95,
+      "cost": 9.5,
+      "pred": 163.81
+    },
+    {
+      "id": "328.0",
+      "name": "Mohamed Salah",
+      "team": "Liverpool",
+      "position": "MID",
+      "cost_int": 136,
+      "cost": 13.6,
+      "pred": 206.51
+    },
+    {
+      "id": "351.0",
+      "name": "Erling Haaland",
+      "team": "Man City",
+      "position": "FWD",
+      "cost_int": 149,
+      "cost": 14.9,
+      "pred": 173.95
+    },
+    {
+      "id": "4.0",
+      "name": "Kai Havertz",
+      "team": "Arsenal",
+      "position": "FWD",
+      "cost_int": 77,
+      "cost": 7.7,
+      "pred": 108.17
+    },
+    {
+      "id": "58.0",
+      "name": "Ollie Watkins",
+      "team": "Aston Villa",
+      "position": "FWD",
+      "cost_int": 92,
+      "cost": 9.2,
+      "pred": 146.27
+    }
+  ]
+}

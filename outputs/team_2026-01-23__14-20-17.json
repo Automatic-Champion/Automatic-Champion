@@ -1,0 +1,115 @@
+{
+  "formation": "3-4-3",
+  "budget": 120.0,
+  "budget_int": 1200,
+  "total_cost_int": 951,
+  "total_cost": 95.1,
+  "total_pred": 1670.84,
+  "meta": {
+    "dropped_invalid_element_type": 17,
+    "invalid_element_type_values": [
+      NaN
+    ]
+  },
+  "players": [
+    {
+      "id": "347.0",
+      "name": "Ederson Santana de Moraes",
+      "team": "Man City",
+      "position": "GK",
+      "cost_int": 53,
+      "cost": 5.3,
+      "pred": 135.9
+    },
+    {
+      "id": "311.0",
+      "name": "Trent Alexander-Arnold",
+      "team": "Liverpool",
+      "position": "DEF",
+      "cost_int": 72,
+      "cost": 7.2,
+      "pred": 166.34
+    },
+    {
+      "id": "339.0",
+      "name": "Virgil van Dijk",
+      "team": "Liverpool",
+      "position": "DEF",
+      "cost_int": 67,
+      "cost": 6.7,
+      "pred": 138.58
+    },
+    {
+      "id": "18.0",
+      "name": "William Saliba",
+      "team": "Arsenal",
+      "position": "DEF",
+      "cost_int": 64,
+      "cost": 6.4,
+      "pred": 104.63
+    },
+    {
+      "id": "17.0",
+      "name": "Bukayo Saka",
+      "team": "Arsenal",
+      "position": "MID",
+      "cost_int": 104,
+      "cost": 10.4,
+      "pred": 167.51
+    },
+    {
+      "id": "345.0",
+      "name": "Kevin De Bruyne",
+      "team": "Man City",
+      "position": "MID",
+      "cost_int": 95,
+      "cost": 9.5,
+      "pred": 163.81
+    },
+    {
+      "id": "328.0",
+      "name": "Mohamed Salah",
+      "team": "Liverpool",
+      "position": "MID",
+      "cost_int": 136,
+      "cost": 13.6,
+      "pred": 206.51
+    },
+    {
+      "id": "503.0",
+      "name": "Son Heung-min",
+      "team": "Spurs",
+      "position": "MID",
+      "cost_int": 97,
+      "cost": 9.7,
+      "pred": 199.93
+    },
+    {
+      "id": "401.0",
+      "name": "Alexander Isak",
+      "team": "Newcastle",
+      "position": "FWD",
+      "cost_int": 94,
+      "cost": 9.4,
+      "pred": 125.11
+    },
+    {
+      "id": "180.0",
+      "name": "Nicolas Jackson",
+      "team": "Chelsea",
+      "position": "FWD",
+      "cost_int": 77,
+      "cost": 7.7,
+      "pred": 116.25
+    },
+    {
+      "id": "58.0",
+      "name": "Ollie Watkins",
+      "team": "Aston Villa",
+      "position": "FWD",
+      "cost_int": 92,
+      "cost": 9.2,
+      "pred": 146.27
+    }
+  ]
+}
