@@ -1,0 +1,53 @@
+Automatic Champion
+
+STARTING_XI
+position,name,team,cost,pred,id
+GK,Matz Sels,Nott'm Forest,5.2,141.86,443.0
+DEF,James Tarkowski,Everton,4.7,97.84,236.0
+DEF,Jarrad Branthwaite,Everton,4.9,97.42,219.0
+DEF,Trent Alexander-Arnold,Liverpool,7.2,166.34,311.0
+DEF,Virgil van Dijk,Liverpool,6.7,138.58,339.0
+MID,Bukayo Saka,Arsenal,10.4,167.51,17.0
+MID,Kevin De Bruyne,Man City,9.5,163.81,345.0
+MID,Mohamed Salah,Liverpool,13.6,206.51,328.0
+MID,Son Heung-min,Spurs,9.7,199.93,503.0
+FWD,Erling Haaland,Man City,14.9,173.95,351.0
+FWD,Ollie Watkins,Aston Villa,9.2,146.27,58.0
+
+BENCH
+position,name,team,cost,pred,id
+GK,Stefan Ortega Moreno,Man City,5.2,140.5,358.0
+DEF,Antonee Robinson,Fulham,4.7,94.38,255.0
+MID,Cole Palmer,Chelsea,10.5,162.63,182.0
+FWD,Gabriel Fernando de Jesus,Arsenal,6.5,101.83,2.0
+
+TOTALS
+formation,4-4-2
+total_cost,96.0
+remaining_budget,0.1
+total_pred_starters,1700.02
+total_pred_bench,499.34
+total_pred_squad,2199.36
+
+EXPLANATIONS_BY_POSITION
+position,rank,feature,score,why
+GK,1,price_now,0.44520234629487065,Cost: a good fit for the budget while keeping quality high.
+GK,2,1_years_past_total_points,0.1318133445064152,Past points: shows how productive he was over a full season.
+GK,3,1_years_past_gw_saves,0.08047523266972163,Shot-stopping: more saves can add points for goalkeepers.
+GK,4,1_years_past_gw_games_played,0.0443184363456123,"Reliability: plays regularly, which increases chances of steady points."
+GK,5,1_years_past_bps,0.04410701754773058,Bonus potential: higher BPS often means more bonus points.
+DEF,1,price_now,0.31144790817566487,Cost: a good fit for the budget while keeping quality high.
+DEF,2,1_years_past_total_points,0.08807874699904217,Past points: shows how productive he was over a full season.
+DEF,3,1_years_past_bps,0.06558993487686474,Bonus potential: higher BPS often means more bonus points.
+DEF,4,1_years_past_gw_minutes_per_game,0.05446118988684243,Reliability: regular minutes increase steady points.
+DEF,5,1_years_past_influence,0.05438472465724359,This suggests steady returns over the season.
+MID,1,1_years_past_ict_index,0.335098903465692,"Overall involvement: combines influence, creativity and threat."
+MID,2,price_now,0.17686007804187892,Cost: a good fit for the budget while keeping quality high.
+MID,3,1_years_past_influence,0.08749080794151673,This suggests steady returns over the season.
+MID,4,1_years_past_total_points,0.058765861170684185,Past points: shows how productive he was over a full season.
+MID,5,1_years_past_now_cost,0.03944271238603666,This suggests steady returns over the season.
+FWD,1,1_years_past_creativity,0.35162112329270273,This suggests steady returns over the season.
+FWD,2,price_now,0.16914113347205578,Cost: a good fit for the budget while keeping quality high.
+FWD,3,1_years_past_gw_minutes_per_game,0.05817197630274938,Reliability: regular minutes increase steady points.
+FWD,4,1_years_past_influence,0.056370979838924896,This suggests steady returns over the season.
+FWD,5,1_years_past_bps,0.05272520065487668,Bonus potential: higher BPS often means more bonus points.

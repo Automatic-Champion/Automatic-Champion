@@ -76,6 +76,8 @@ _EXPLAIN_CACHE = {
     "models": None,
 }
 
+_BANNER_PRINTED = False
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build optimal FPL XI")
@@ -203,6 +205,38 @@ def explain_feature(feature_name: str, value: object, position: str) -> str:
     return f"{_pretty_feature_name(feature_name)}: {value} — This stat suggests consistent performance in past seasons."
 
 
+def print_banner() -> None:
+    global _BANNER_PRINTED
+    if _BANNER_PRINTED:
+        return
+    print("")
+    print("Automatic Champion")
+    print("------------------")
+    _BANNER_PRINTED = True
+
+
+def _explain_feature_why(feature_name: str) -> str:
+    if feature_name == "price_now":
+        return "Cost: a good fit for the budget while keeping quality high."
+
+    if feature_name.startswith("1_years_past_"):
+        base = feature_name.replace("1_years_past_", "")
+        pretty = _pretty_feature_name(base)
+        why = FEATURE_EXPLANATIONS.get(base) or FEATURE_EXPLANATIONS.get(pretty)
+        return why or "This suggests steady returns over the season."
+
+    key = feature_name.lower()
+    why = FEATURE_EXPLANATIONS.get(key)
+    if why:
+        return why
+
+    for pattern, text in FEATURE_EXPLANATIONS.items():
+        if key.endswith(pattern):
+            return text
+
+    return "This stat suggests consistent performance in past seasons."
+
+
 def _load_explain_resources(data_path: str, models_dir: str) -> tuple[pd.DataFrame, list[str], dict[int, object]]:
     if _EXPLAIN_CACHE["data_path"] != data_path:
         _EXPLAIN_CACHE["data_path"] = data_path
@@ -260,29 +294,49 @@ def get_top_features_for_player(
     return items
 
 
-def _ensure_explanations_cache(
+def get_top_features_for_position(
+    position: str,
+    data_path: str,
+    models_dir: str,
+    top_k: int = 5,
+) -> list[dict]:
+    _, feature_cols, models = _load_explain_resources(data_path, models_dir)
+    pos_code_map = {label: code for code, label in MODEL_POSITION_MAP.items()}
+    pos_code = pos_code_map.get(position)
+    if pos_code is None or pos_code not in models:
+        return []
+    importances = pd.Series(models[pos_code].feature_importances_, index=feature_cols)
+    top = importances.sort_values(ascending=False).head(top_k)
+    return [{"feature": feature, "score": float(score)} for feature, score in top.items()]
+
+
+def _ensure_position_explanations_cache(
     result: dict,
     data_path: str,
     models_dir: str,
     top_k: int = 5,
 ) -> None:
-    cache = result.setdefault("explanations_cache", {})
-    starters = result.get("starters", result.get("players", []))
-    bench = result.get("bench", [])
-    for player in starters + bench:
-        player_id = str(player["id"])
-        if player_id in cache:
+    cache = result.setdefault("position_explanations_cache", {})
+    for position in POSITION_ORDER:
+        if position in cache:
             continue
         try:
-            cache[player_id] = get_top_features_for_player(
-                player=player,
-                position=player["position"],
+            items = get_top_features_for_position(
+                position=position,
                 data_path=data_path,
                 models_dir=models_dir,
                 top_k=top_k,
             )
+            cache[position] = [
+                {
+                    "feature": item["feature"],
+                    "score": item["score"],
+                    "why": _explain_feature_why(item["feature"]),
+                }
+                for item in items
+            ]
         except Exception:
-            cache[player_id] = []
+            cache[position] = []
 
 
 def explanations_menu(
@@ -292,31 +346,30 @@ def explanations_menu(
     models_dir: str,
     top_k: int = 5,
 ) -> None:
-    starters = current_result.get("starters", current_result.get("players", []))
-    bench = current_result.get("bench", [])
-    combined = [(player, "STARTER") for player in starters] + [
-        (player, "BENCH") for player in bench
-    ]
     while True:
-        print("\nShow explanations (select a player)")
-        menu = {0: "Back"}
-        for idx, (player, role) in enumerate(combined, start=1):
-            label = f"{player['name']} ({player['position']}, {player['team']}) - {role}"
-            menu[idx] = label
+        print("\nShow explanations")
+        menu = {
+            0: "Back",
+            1: "Goalkeepers (GK)",
+            2: "Defenders (DEF)",
+            3: "Midfielders (MID)",
+            4: "Forwards (FWD)",
+        }
         _print_menu(menu)
         choice = _read_menu_choice(menu)
         if choice is None or choice == 0:
             return
-        player, role = combined[choice - 1]
-        _ensure_explanations_cache(current_result, data_path, models_dir, top_k=top_k)
-        items = current_result["explanations_cache"].get(str(player["id"]), [])
-        print(f"\n{player['name']} ({player['position']}, {player['team']}) — Top {top_k} model drivers")
+        position = POSITION_ORDER[choice - 1]
+        _ensure_position_explanations_cache(current_result, data_path, models_dir, top_k=top_k)
+        items = current_result["position_explanations_cache"].get(position, [])
+        print(f"\n{position} — Top {top_k} model drivers for this position")
         if not items:
-            print("  (No explanation available for this player.)")
+            print(f"  (No explanations available for {position})")
             input("\nPress Enter to return...")
             continue
         for idx, item in enumerate(items, start=1):
-            print(f"  {idx}) {item['why']}")
+            pretty = _pretty_feature_name(item["feature"])
+            print(f"  {idx}) {pretty} — {item['why']}")
         input("\nPress Enter to return...")
 def print_squad(result: dict, budget: float) -> None:
     remaining = result.get("remaining_budget")
@@ -1370,6 +1423,7 @@ def _pick_replacement(
 
 
 def _interactive_menu(args: argparse.Namespace) -> None:
+    print_banner()
     state = {
         "budget": 100.0,
         "formation": args.formation,
@@ -1392,7 +1446,7 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             if choice == 0:
                 return
 
-            state["budget"] = _prompt_float("Enter budget (e.g., 100.0): ", 1.0)
+            state["budget"] = _prompt_float("Enter budget: ", 1.0)
             state["formation"] = _select_formation(state["formation"])
 
             build_menu = {
@@ -1620,7 +1674,7 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             print_squad(current_result, state["budget"])
             _print_verbose(current_result, args.quiet, args.verbose)
         elif choice == 3:
-            state["budget"] = _prompt_float("Enter budget (e.g., 100.0): ", 1.0)
+            state["budget"] = _prompt_float("Enter budget: ", 1.0)
             try:
                 if state["mode"] == "full_15":
                     current_result = _build_full_squad(
@@ -1708,8 +1762,8 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             timestamp = datetime.now().strftime("%Y-%m-%d__%H-%M-%S")
             outputs_dir = ROOT_DIR / "outputs"
             outputs_dir.mkdir(parents=True, exist_ok=True)
-            csv_path = outputs_dir / f"team_{timestamp}.csv"
-            json_path = outputs_dir / f"team_{timestamp}.json"
+            csv_path = outputs_dir / f"AutomaticChampionTeam_{timestamp}.csv"
+            json_path = outputs_dir / f"AutomaticChampionTeam_{timestamp}.json"
             _require_bench(current_result)
             starters = current_result.get("starters", current_result.get("players", []))
             bench = current_result.get("bench", [])
@@ -1720,15 +1774,18 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             total_pred_starters = sum(player["pred"] for player in starters)
             total_pred_bench = sum(player["pred"] for player in bench) if bench else 0.0
             mode = _get_mode(current_result)
-            _ensure_explanations_cache(
+            _ensure_position_explanations_cache(
                 current_result,
                 data_path=args.data,
                 models_dir=args.models_dir,
+                top_k=5,
             )
 
             header = ["position", "name", "team", "cost", "pred", "id"]
             with csv_path.open("w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
+                writer.writerow(["Automatic Champion"])
+                writer.writerow([])
                 writer.writerow(["STARTING_XI"])
                 writer.writerow(header)
                 for player in starters:
@@ -1756,7 +1813,7 @@ def _interactive_menu(args: argparse.Namespace) -> None:
                 writer.writerow([])
                 writer.writerow(["TOTALS"])
                 writer.writerow(["formation", current_result.get("formation", "N/A")])
-                writer.writerow(["mode", mode])
+                # writer.writerow(["mode", mode])
                 writer.writerow(["total_cost", f"{total_cost:.1f}"])
                 writer.writerow(["remaining_budget", f"{remaining:.1f}"])
                 writer.writerow(["total_pred_starters", f"{total_pred_starters:.2f}"])
@@ -1765,24 +1822,17 @@ def _interactive_menu(args: argparse.Namespace) -> None:
                     ["total_pred_squad", f"{(total_pred_starters + total_pred_bench):.2f}"]
                 )
                 writer.writerow([])
-                writer.writerow(["EXPLANATIONS"])
-                writer.writerow(
-                    ["player_id", "name", "position", "team", "role", "rank", "feature", "value", "score", "why"]
-                )
-                combined = [(p, "STARTER") for p in starters] + [(p, "BENCH") for p in bench]
-                for player, role in combined:
-                    items = current_result["explanations_cache"].get(str(player["id"]), [])
+                writer.writerow(["EXPLANATIONS_BY_POSITION"])
+                writer.writerow(["position", "rank", "feature", "score", "why"])
+                cache = current_result.get("position_explanations_cache", {})
+                for position in POSITION_ORDER:
+                    items = cache.get(position, [])
                     for idx, item in enumerate(items, start=1):
                         writer.writerow(
                             [
-                                player["id"],
-                                player["name"],
-                                player["position"],
-                                player["team"],
-                                role,
+                                position,
                                 idx,
                                 item.get("feature"),
-                                item.get("value"),
                                 item.get("score"),
                                 item.get("why"),
                             ]
@@ -1792,12 +1842,15 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             payload["starters"] = starters
             payload["bench"] = bench
             payload["remaining_budget"] = remaining
-            payload["mode"] = mode
-            payload["explanations"] = current_result.get("explanations_cache", {})
+            payload["app"] = "Automatic Champion"
+            # payload["mode"] = mode
+            payload["explanations_by_position"] = current_result.get(
+                "position_explanations_cache", {}
+            )
             _write_json(str(json_path), payload)
 
-            print(f"Saved: outputs/team_{timestamp}.csv")
-            print(f"Saved: outputs/team_{timestamp}.json")
+            print(f"Saved: outputs/AutomaticChampionTeam_{timestamp}.csv")
+            print(f"Saved: outputs/AutomaticChampionTeam_{timestamp}.json")
 
 
 def _write_json(path: str, payload: dict) -> None:
