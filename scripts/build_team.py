@@ -688,92 +688,253 @@ def _build_bench_auto(
     return bench
 
 
-def _build_bench_manual(
-    xi_result: dict,
+def manual_pick_squad(
+    formation: str,
+    budget: float,
     data_path: str,
     models_dir: str,
-    budget: float,
     max_per_team: int,
     banned_ids: set[str],
-) -> list[dict] | dict | None:
+) -> tuple[list[dict] | None, list[dict] | None]:
     pool_df, _ = score_players(
         data_path=data_path,
         models_dir=models_dir,
         pred_mode="models",
     )
-    selected = []
-    squad_ids = {str(player["id"]) for player in xi_result["players"]}
-    team_counts = _team_counts(xi_result)
-    remaining_budget_int = int(round(budget * 10)) - xi_result["total_cost_int"]
-
+    counts = _position_counts_from_formation(formation)
+    steps: list[tuple[str, str]] = []
     for pos in POSITION_ORDER:
-        while True:
-            remaining_budget = remaining_budget_int / 10.0
-            print(f"\nRemaining budget: {remaining_budget:.1f}")
-            candidates = pool_df[pool_df["position"] == pos].copy()
+        steps.extend([("xi", pos)] * counts[pos])
+    for pos in POSITION_ORDER:
+        steps.append(("bench", pos))
+
+    starters: list[dict] = []
+    bench: list[dict] = []
+    selected_ids: set[str] = set()
+    team_counts: dict[str, int] = {}
+    remaining_budget_int = int(round(budget * 10))
+    pick_stack: list[tuple[str, dict]] = []
+    idx = 0
+    while idx < len(steps):
+        stage, pos = steps[idx]
+        remaining_budget = remaining_budget_int / 10.0
+        print(f"\nRemaining budget: {remaining_budget:.1f}")
+        candidates = pool_df[pool_df["position"] == pos].copy()
+        if banned_ids:
             candidates = candidates[~candidates["id"].astype(str).isin(banned_ids)]
-            candidates = candidates[~candidates["id"].astype(str).isin(squad_ids)]
-            candidates = candidates[
-                candidates["team"].map(lambda team: team_counts.get(team, 0) < max_per_team)
-            ]
-            candidates = candidates[candidates["cost_int"].astype(int) <= remaining_budget_int]
-            candidates = candidates.sort_values("pred", ascending=False).head(15)
+        candidates = candidates[~candidates["id"].astype(str).isin(selected_ids)]
+        candidates = candidates[
+            candidates["team"].map(lambda team: team_counts.get(team, 0) < max_per_team)
+        ]
+        candidates = candidates[candidates["cost_int"].astype(int) <= remaining_budget_int]
+        candidates = candidates.sort_values("pred", ascending=False).head(15)
 
-            if candidates.empty:
-                action = handle_no_options(
-                    f"No valid options available under current constraints (remaining budget: {remaining_budget:.1f}).",
-                    {0: "Back", 1: "Switch to Auto"},
-                )
-                if action == 1:
-                    return {"_action": "auto"}
-                return None
-
-            print(f"\nTop candidates for {pos}:")
-            candidate_rows = list(candidates.itertuples(index=False))
-            candidate_menu, candidate_map = build_candidate_menu(
-                f"Top candidates for {pos}:",
-                candidate_rows,
-                allow_back=True,
-                back_label="Back",
+        if candidates.empty:
+            print(
+                f"No valid options under current constraints (remaining budget: {remaining_budget:.1f})."
             )
-            for idx, row in candidate_map.items():
-                print(
-                    f"  [{idx}] {row.name:<25} {row.team:<20} "
-                    f"cost={row.cost:.1f} pred={row.pred:.2f}"
-                )
-            print("  [0] Back")
-
-            choice = _read_menu_choice(candidate_menu)
-            if choice is None or choice == 0:
-                return None
-            picked = candidate_map[choice]
-            if int(picked.cost_int) > remaining_budget_int:
-                print("Selected player exceeds remaining budget.")
-                continue
-            if team_counts.get(picked.team, 0) >= max_per_team:
-                print(
-                    f"Cannot select {picked.name} from {picked.team}: "
-                    f"already have {max_per_team} players from that team."
-                )
+            _print_menu({0: "Back"})
+            action = _read_menu_choice({0: "Back"})
+            if action is None or action == 0:
+                if idx == 0:
+                    return None, None
+                last_stage, last = pick_stack.pop()
+                selected_ids.remove(str(last["id"]))
+                team_counts[last["team"]] = team_counts.get(last["team"], 1) - 1
+                remaining_budget_int += last["cost_int"]
+                if last_stage == "xi":
+                    starters.pop()
+                else:
+                    bench.pop()
+                idx -= 1
                 continue
 
-            selected.append(
-                {
-                    "id": str(picked.id),
-                    "name": picked.name,
-                    "team": picked.team,
-                    "position": pos,
-                    "cost_int": int(picked.cost_int),
-                    "cost": float(picked.cost),
-                    "pred": float(picked.pred),
-                }
+        print(f"\nTop candidates for {pos}:")
+        candidate_rows = list(candidates.itertuples(index=False))
+        candidate_menu, candidate_map = build_candidate_menu(
+            f"Top candidates for {pos}:",
+            candidate_rows,
+            allow_back=True,
+            back_label="Back",
+        )
+        for menu_idx, row in candidate_map.items():
+            print(
+                f"  [{menu_idx}] {row.name:<25} {row.team:<20} "
+                f"cost={row.cost:.1f} pred={row.pred:.2f}"
             )
-            squad_ids.add(str(picked.id))
-            team_counts[picked.team] = team_counts.get(picked.team, 0) + 1
-            remaining_budget_int -= int(picked.cost_int)
-            break
+        print("  [0] Back")
 
-    return selected
+        choice = _read_menu_choice(candidate_menu)
+        if choice is None or choice == 0:
+            if idx == 0:
+                return None, None
+            last_stage, last = pick_stack.pop()
+            selected_ids.remove(str(last["id"]))
+            team_counts[last["team"]] = team_counts.get(last["team"], 1) - 1
+            remaining_budget_int += last["cost_int"]
+            if last_stage == "xi":
+                starters.pop()
+            else:
+                bench.pop()
+            idx -= 1
+            continue
+
+        picked = candidate_map[choice]
+        if int(picked.cost_int) > remaining_budget_int:
+            print("Selected player exceeds remaining budget.")
+            continue
+        if team_counts.get(picked.team, 0) >= max_per_team:
+            print(
+                f"Cannot select {picked.name} from {picked.team}: "
+                f"already have {max_per_team} players from that team."
+            )
+            continue
+
+        player = {
+            "id": str(picked.id),
+            "name": picked.name,
+            "team": picked.team,
+            "position": pos,
+            "cost_int": int(picked.cost_int),
+            "cost": float(picked.cost),
+            "pred": float(picked.pred),
+        }
+        pick_stack.append((stage, player))
+        if stage == "xi":
+            starters.append(player)
+        else:
+            bench.append(player)
+        selected_ids.add(str(picked.id))
+        team_counts[picked.team] = team_counts.get(picked.team, 0) + 1
+        remaining_budget_int -= int(picked.cost_int)
+        idx += 1
+        continue
+
+    return starters, bench
+
+
+def run_regenerate_flow(
+    kind: str,
+    proposed_formation: str,
+    proposed_budget: float,
+    state: dict,
+    current_result: dict,
+    args: argparse.Namespace,
+    locked_ids: set[str],
+    banned_ids: set[str],
+) -> tuple[dict | None, bool]:
+    while True:
+        print(f"\nRebuild after {kind} change:")
+        rebuild_menu = {
+            0: "Cancel without changes",
+            1: "Auto rebuild full squad (15)",
+            2: "Manual rebuild (Starting XI then Bench)",
+        }
+        _print_menu(rebuild_menu)
+        rebuild_choice = _read_menu_choice(rebuild_menu)
+        if rebuild_choice is None:
+            continue
+        if rebuild_choice == 0:
+            return None, False
+        if rebuild_choice == 1:
+            try:
+                if state["mode"] == "full_15":
+                    new_result = _build_full_squad(
+                        data_path=args.data,
+                        models_dir=args.models_dir,
+                        budget=proposed_budget,
+                        max_per_team=args.max_per_team,
+                        formation=proposed_formation,
+                        banned_ids=banned_ids,
+                    )
+                else:
+                    bench = current_result.get("bench", [])
+                    if bench:
+                        bench_menu = {
+                            0: "Back",
+                            1: "Auto rebuild bench",
+                            2: "Keep current bench (lock)",
+                        }
+                        print("\nBench after regenerate:")
+                        _print_menu(bench_menu)
+                        bench_choice = _read_menu_choice(bench_menu)
+                        if bench_choice is None or bench_choice == 0:
+                            continue
+                        if bench_choice == 2:
+                            new_result = _solve_starters_with_fixed_bench(
+                                data_path=args.data,
+                                models_dir=args.models_dir,
+                                formation=proposed_formation,
+                                budget=proposed_budget,
+                                max_per_team=args.max_per_team,
+                                bench=bench,
+                                banned_ids=banned_ids,
+                            )
+                            new_result["bench"] = bench
+                        else:
+                            new_result = build_team(
+                                budget=proposed_budget,
+                                data_path=args.data,
+                                models_dir=args.models_dir,
+                                max_per_team=args.max_per_team,
+                                formation=proposed_formation,
+                                method="ilp",
+                                pred_mode="models",
+                                locked_ids=locked_ids,
+                                banned_ids=banned_ids,
+                            )
+                            new_bench = _build_bench_auto(
+                                xi_result=new_result,
+                                data_path=args.data,
+                                models_dir=args.models_dir,
+                                budget=proposed_budget,
+                                max_per_team=args.max_per_team,
+                                banned_ids=banned_ids,
+                            )
+                            new_result["bench"] = new_bench
+                    else:
+                        new_result = build_team(
+                            budget=proposed_budget,
+                            data_path=args.data,
+                            models_dir=args.models_dir,
+                            max_per_team=args.max_per_team,
+                            formation=proposed_formation,
+                            method="ilp",
+                            pred_mode="models",
+                            locked_ids=locked_ids,
+                            banned_ids=banned_ids,
+                        )
+            except ValueError as exc:
+                print(f"No valid team found under the new {kind}: {exc}")
+                continue
+        else:
+            starters, bench = manual_pick_squad(
+                formation=proposed_formation,
+                budget=proposed_budget,
+                data_path=args.data,
+                models_dir=args.models_dir,
+                max_per_team=args.max_per_team,
+                banned_ids=banned_ids,
+            )
+            if starters is None or bench is None:
+                continue
+            starters = _sort_players(starters)
+            bench = _sort_players(bench)
+            total_cost_int = sum(p["cost_int"] for p in starters)
+            total_pred = sum(p["pred"] for p in starters)
+            new_result = {
+                "formation": proposed_formation,
+                "budget": proposed_budget,
+                "budget_int": int(round(proposed_budget * 10)),
+                "total_cost_int": total_cost_int,
+                "total_cost": total_cost_int / 10.0,
+                "total_pred": float(total_pred),
+                "players": starters,
+                "starters": starters,
+                "bench": bench,
+            }
+
+        return new_result, True
 
 
 def _sort_players(players: list[dict]) -> list[dict]:
@@ -1143,28 +1304,10 @@ def _replace_with_bench_menu(
             candidates = candidates.sort_values("pred", ascending=False).head(10)
 
             if candidates.empty:
-                action = handle_no_options(
+                handle_no_options(
                     "No valid options available under current constraints.",
-                    {0: "Back", 1: "Switch to Auto"},
+                    {0: "Back"},
                 )
-                if action == 1:
-                    try:
-                        updated_bench = _build_bench_auto(
-                            xi_result=result,
-                            data_path=data_path,
-                            models_dir=models_dir,
-                            budget=budget,
-                            max_per_team=max_per_team,
-                            banned_ids=banned_ids,
-                            locked_ids=locked_bench_ids,
-                        )
-                    except ValueError as exc:
-                        print(f"No valid bench found: {exc}")
-                        return None
-                    result["bench"] = updated_bench
-                    _update_remaining_budget(result, budget)
-                    _require_bench(result)
-                    return result
                 return None
 
             print("\nTop candidates:")
@@ -1340,12 +1483,10 @@ def _pick_replacement(
         candidates = candidates.sort_values("pred", ascending=False).head(10)
 
         if candidates.empty:
-            action = handle_no_options(
+            handle_no_options(
                 "No valid options available under current constraints.",
-                {0: "Back", 1: "Switch to Auto"},
+                {0: "Back"},
             )
-            if action == 1:
-                return new_result
             return None
 
         print("\nTop candidates:")
@@ -1450,8 +1591,8 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             state["formation"] = _select_formation(state["formation"])
 
             build_menu = {
-                1: "Build Starting XI then Bench (4)",
-                2: "Build Full Squad (15) in one solve",
+                1: "Build Full Squad (15) in one solve",
+                2: "Manual build (Starting XI then Bench)",
             }
             print("\nBuild mode:")
             _print_menu(build_menu)
@@ -1461,69 +1602,6 @@ def _interactive_menu(args: argparse.Namespace) -> None:
 
             try:
                 if build_choice == 1:
-                    state["mode"] = "xi_then_bench"
-                    current_result = build_team(
-                        budget=state["budget"],
-                        data_path=args.data,
-                        models_dir=args.models_dir,
-                        max_per_team=args.max_per_team,
-                        formation=state["formation"],
-                        method="ilp",
-                        pred_mode="models",
-                        locked_ids=locked_ids,
-                        banned_ids=banned_ids,
-                    )
-                    current_result["mode"] = state["mode"]
-                    current_result["starters"] = current_result["players"]
-
-                    bench_menu = {1: "Manual (pick players)", 2: "Auto (optimize)"}
-                    print("\nBuild bench:")
-                    _print_menu(bench_menu)
-                    bench_choice = _read_menu_choice(bench_menu)
-                    if bench_choice is None:
-                        continue
-
-                    if bench_choice == 2:
-                        state["bench_mode"] = "auto"
-                        bench = _build_bench_auto(
-                            xi_result=current_result,
-                            data_path=args.data,
-                            models_dir=args.models_dir,
-                            budget=state["budget"],
-                            max_per_team=args.max_per_team,
-                            banned_ids=banned_ids,
-                        )
-                    else:
-                        state["bench_mode"] = "manual"
-                        bench = _build_bench_manual(
-                            xi_result=current_result,
-                            data_path=args.data,
-                            models_dir=args.models_dir,
-                            budget=state["budget"],
-                            max_per_team=args.max_per_team,
-                            banned_ids=banned_ids,
-                        )
-                        if isinstance(bench, dict) and bench.get("_action") == "auto":
-                            state["bench_mode"] = "auto"
-                            bench = _build_bench_auto(
-                                xi_result=current_result,
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                budget=state["budget"],
-                                max_per_team=args.max_per_team,
-                                banned_ids=banned_ids,
-                            )
-                        if bench is None:
-                            current_result = None
-                            continue
-
-                    current_result["bench"] = bench
-                    current_result["starters"] = current_result["players"]
-                    _update_remaining_budget(current_result, state["budget"])
-                    _require_bench(current_result)
-                    print_squad(current_result, state["budget"])
-                    _print_verbose(current_result, args.quiet, args.verbose)
-                else:
                     state["mode"] = "full_15"
                     current_result = _build_full_squad(
                         data_path=args.data,
@@ -1534,6 +1612,38 @@ def _interactive_menu(args: argparse.Namespace) -> None:
                         banned_ids=banned_ids,
                     )
                     current_result["mode"] = state["mode"]
+                    _require_bench(current_result)
+                    print_squad(current_result, state["budget"])
+                    _print_verbose(current_result, args.quiet, args.verbose)
+                else:
+                    state["mode"] = "xi_then_bench"
+                    starters, bench = manual_pick_squad(
+                        formation=state["formation"],
+                        budget=state["budget"],
+                        data_path=args.data,
+                        models_dir=args.models_dir,
+                        max_per_team=args.max_per_team,
+                        banned_ids=banned_ids,
+                    )
+                    if starters is None or bench is None:
+                        current_result = None
+                        continue
+                    starters = _sort_players(starters)
+                    bench = _sort_players(bench)
+                    total_cost_int = sum(p["cost_int"] for p in starters)
+                    total_pred = sum(p["pred"] for p in starters)
+                    current_result = {
+                        "formation": state["formation"],
+                        "budget": state["budget"],
+                        "budget_int": int(round(state["budget"] * 10)),
+                        "total_cost_int": total_cost_int,
+                        "total_cost": total_cost_int / 10.0,
+                        "total_pred": float(total_pred),
+                        "players": starters,
+                        "starters": starters,
+                        "bench": bench,
+                    }
+                    _update_remaining_budget(current_result, state["budget"])
                     _require_bench(current_result)
                     print_squad(current_result, state["budget"])
                     _print_verbose(current_result, args.quiet, args.verbose)
@@ -1596,156 +1706,49 @@ def _interactive_menu(args: argparse.Namespace) -> None:
             print_squad(current_result, state["budget"])
             _print_verbose(current_result, args.quiet, args.verbose)
         elif choice == 2:
-            state["formation"] = _select_formation(state["formation"])
-            try:
-                if state["mode"] == "full_15":
-                    new_result = _build_full_squad(
-                        data_path=args.data,
-                        models_dir=args.models_dir,
-                        budget=state["budget"],
-                        max_per_team=args.max_per_team,
-                        formation=state["formation"],
-                        banned_ids=banned_ids,
-                    )
-                else:
-                    bench = current_result.get("bench", [])
-                    if bench:
-                        bench_menu = {
-                            1: "Auto rebuild bench",
-                            2: "Keep current bench (lock)",
-                        }
-                        print("\nBench after regenerate:")
-                        _print_menu(bench_menu)
-                        bench_choice = _read_menu_choice(bench_menu)
-                        if bench_choice is None:
-                            continue
-                        if bench_choice == 2:
-                            new_result = _solve_starters_with_fixed_bench(
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                formation=state["formation"],
-                                budget=state["budget"],
-                                max_per_team=args.max_per_team,
-                                bench=bench,
-                                banned_ids=banned_ids,
-                            )
-                            new_result["bench"] = bench
-                        else:
-                            new_result = build_team(
-                                budget=state["budget"],
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                max_per_team=args.max_per_team,
-                                formation=state["formation"],
-                                method="ilp",
-                                pred_mode="models",
-                                locked_ids=locked_ids,
-                                banned_ids=banned_ids,
-                            )
-                            new_bench = _build_bench_auto(
-                                xi_result=new_result,
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                budget=state["budget"],
-                                max_per_team=args.max_per_team,
-                                banned_ids=banned_ids,
-                            )
-                            new_result["bench"] = new_bench
-                    else:
-                        new_result = build_team(
-                            budget=state["budget"],
-                            data_path=args.data,
-                            models_dir=args.models_dir,
-                            max_per_team=args.max_per_team,
-                            formation=state["formation"],
-                            method="ilp",
-                            pred_mode="models",
-                            locked_ids=locked_ids,
-                            banned_ids=banned_ids,
-                        )
-            except ValueError as exc:
-                print(f"No valid team found under the new formation: {exc}")
+            proposed_formation = _select_formation(state["formation"])
+            new_result, applied = run_regenerate_flow(
+                kind="formation",
+                proposed_formation=proposed_formation,
+                proposed_budget=state["budget"],
+                state=state,
+                current_result=current_result,
+                args=args,
+                locked_ids=locked_ids,
+                banned_ids=banned_ids,
+            )
+            if not applied or new_result is None:
                 continue
+            state["formation"] = proposed_formation
             current_result = new_result
             current_result["mode"] = state["mode"]
-            current_result["starters"] = current_result.get("players", current_result.get("starters", []))
+            current_result["starters"] = current_result.get(
+                "players", current_result.get("starters", [])
+            )
             _update_remaining_budget(current_result, state["budget"])
             _require_bench(current_result)
             print_squad(current_result, state["budget"])
             _print_verbose(current_result, args.quiet, args.verbose)
         elif choice == 3:
-            state["budget"] = _prompt_float("Enter budget: ", 1.0)
-            try:
-                if state["mode"] == "full_15":
-                    current_result = _build_full_squad(
-                        data_path=args.data,
-                        models_dir=args.models_dir,
-                        budget=state["budget"],
-                        max_per_team=args.max_per_team,
-                        formation=state["formation"],
-                        banned_ids=banned_ids,
-                    )
-                else:
-                    bench = current_result.get("bench", [])
-                    if bench:
-                        bench_menu = {
-                            1: "Auto rebuild bench",
-                            2: "Keep current bench (lock)",
-                        }
-                        print("\nBench after regenerate:")
-                        _print_menu(bench_menu)
-                        bench_choice = _read_menu_choice(bench_menu)
-                        if bench_choice is None:
-                            continue
-                        if bench_choice == 2:
-                            current_result = _solve_starters_with_fixed_bench(
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                formation=state["formation"],
-                                budget=state["budget"],
-                                max_per_team=args.max_per_team,
-                                bench=bench,
-                                banned_ids=banned_ids,
-                            )
-                            current_result["bench"] = bench
-                        else:
-                            current_result = build_team(
-                                budget=state["budget"],
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                max_per_team=args.max_per_team,
-                                formation=state["formation"],
-                                method="ilp",
-                                pred_mode="models",
-                                locked_ids=locked_ids,
-                                banned_ids=banned_ids,
-                            )
-                            new_bench = _build_bench_auto(
-                                xi_result=current_result,
-                                data_path=args.data,
-                                models_dir=args.models_dir,
-                                budget=state["budget"],
-                                max_per_team=args.max_per_team,
-                                banned_ids=banned_ids,
-                            )
-                            current_result["bench"] = new_bench
-                    else:
-                        current_result = build_team(
-                            budget=state["budget"],
-                            data_path=args.data,
-                            models_dir=args.models_dir,
-                            max_per_team=args.max_per_team,
-                            formation=state["formation"],
-                            method="ilp",
-                            pred_mode="models",
-                            locked_ids=locked_ids,
-                            banned_ids=banned_ids,
-                        )
-            except ValueError as exc:
-                print(f"No valid team found under the new budget: {exc}")
+            proposed_budget = _prompt_float("Enter budget: ", 1.0)
+            new_result, applied = run_regenerate_flow(
+                kind="budget",
+                proposed_formation=state["formation"],
+                proposed_budget=proposed_budget,
+                state=state,
+                current_result=current_result,
+                args=args,
+                locked_ids=locked_ids,
+                banned_ids=banned_ids,
+            )
+            if not applied or new_result is None:
                 continue
+            state["budget"] = proposed_budget
+            current_result = new_result
             current_result["mode"] = state["mode"]
-            current_result["starters"] = current_result.get("players", current_result.get("starters", []))
+            current_result["starters"] = current_result.get(
+                "players", current_result.get("starters", [])
+            )
             _update_remaining_budget(current_result, state["budget"])
             _require_bench(current_result)
             print_squad(current_result, state["budget"])
