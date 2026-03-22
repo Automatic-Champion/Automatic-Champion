@@ -1,1 +1,31 @@
+# OS
 .DS_Store
+
+# IDE
+*.xml
+*.iml
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Generated visuals (re-generate via scripts)
+visuals/*.png
+outputs/*.png
+
+# Environment
+.env
+.env.*
+
+# Node (frontend)
+node_modules/
+dist/
+build/
+
+# Data (large files — tracked via Git LFS or excluded)
+*.zip
