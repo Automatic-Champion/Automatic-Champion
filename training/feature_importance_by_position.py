@@ -7,9 +7,9 @@ import pandas as pd
 import joblib
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 MODEL_DIR = BASE_DIR / "models"
-OUTPUT_PATH = BASE_DIR / "feature_importance_heatmap.png"
+OUTPUT_PATH = BASE_DIR / "visuals" / "feature_importance_heatmap.png"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 

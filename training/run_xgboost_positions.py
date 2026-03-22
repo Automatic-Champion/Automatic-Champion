@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts.xgboost_position_models import main
+from training.xgboost_position_models import main
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 SEASON_TEST = "2024-25"

@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 MODEL_DIR = BASE_DIR / "models"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]

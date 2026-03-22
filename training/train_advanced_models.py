@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="historical_player_exports/output",
+        default="data/historical_exports",
         help="Directory containing historical_players_<season>.csv files.",
     )
     parser.add_argument(

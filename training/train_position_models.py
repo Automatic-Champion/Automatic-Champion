@@ -9,9 +9,9 @@ from sklearn.metrics import mean_absolute_error
 import joblib
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 MODEL_DIR = BASE_DIR / "models"
-OUTPUT_PATH = BASE_DIR / "mae_by_position.png"
+OUTPUT_PATH = BASE_DIR / "visuals" / "mae_by_position.png"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 SEASON_VAL = "2023-24"

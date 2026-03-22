@@ -19,7 +19,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 from src.team_builder import build_team, score_players  # noqa: E402
-from scripts.top_features_by_position import (
+from training.top_features_by_position import (
     POSITION_MAP as MODEL_POSITION_MAP,
     SEASONS_TRAIN,
     build_feature_list,

@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 
 SEASONS = [
     "2019-20",

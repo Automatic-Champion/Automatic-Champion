@@ -10,12 +10,12 @@ from sklearn.metrics import mean_absolute_error
 import joblib
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 MODEL_DIR = BASE_DIR / "models"
 
-SCATTER_PATH = BASE_DIR / "presentation_scatter_plot.png"
-HEATMAP_PATH = BASE_DIR / "presentation_feature_heatmap.png"
-BAR_PATH = BASE_DIR / "presentation_performance_bar.png"
+SCATTER_PATH = BASE_DIR / "visuals" / "presentation_scatter_plot.png"
+HEATMAP_PATH = BASE_DIR / "visuals" / "presentation_feature_heatmap.png"
+BAR_PATH = BASE_DIR / "visuals" / "presentation_performance_bar.png"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 SEASON_TEST = "2024-25"

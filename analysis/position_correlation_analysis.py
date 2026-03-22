@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
-OUTPUT_PATH = BASE_DIR / "position_correlation_comparison.png"
-HEATMAP_PATH = BASE_DIR / "position_top_features_heatmap.png"
-MULTIPLES_PATH = BASE_DIR / "position_top_features_multiples.png"
-LOLLIPOP_PATH = BASE_DIR / "position_top_features_lollipop.png"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
+OUTPUT_PATH = BASE_DIR / "visuals" / "position_correlation_comparison.png"
+HEATMAP_PATH = BASE_DIR / "visuals" / "position_top_features_heatmap.png"
+MULTIPLES_PATH = BASE_DIR / "visuals" / "position_top_features_multiples.png"
+LOLLIPOP_PATH = BASE_DIR / "visuals" / "position_top_features_lollipop.png"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 

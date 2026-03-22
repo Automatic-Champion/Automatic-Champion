@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--base-dir",
-        default=os.path.join(repo_root, "Base Data"),
+        default=os.path.join(repo_root, "data", "base"),
         help="base directory containing season folders",
     )
     parser.add_argument(

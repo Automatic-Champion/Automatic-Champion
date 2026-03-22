@@ -9,11 +9,11 @@ from sklearn.ensemble import RandomForestRegressor
 import joblib
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "historical_player_exports" / "output"
+DATA_DIR = BASE_DIR / "data" / "historical_exports"
 MODEL_DIR = BASE_DIR / "models"
 
-STAR_PATH = BASE_DIR / "public_star_test.png"
-SQUAD_PATH = BASE_DIR / "public_squad_score.png"
+STAR_PATH = BASE_DIR / "visuals" / "public_star_test.png"
+SQUAD_PATH = BASE_DIR / "visuals" / "public_squad_score.png"
 
 SEASONS_TRAIN = ["2019-20", "2020-21", "2021-22", "2022-23"]
 SEASON_TEST = "2024-25"
