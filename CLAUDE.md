@@ -13,11 +13,11 @@ Automatic Champion is a Fantasy Premier League (FPL) squad optimizer — a B.Sc.
 ## Repo Structure
 
 ```
-src/              Core library — shared by CLI and backend (DO NOT duplicate logic)
+src/              Core library — shared by backend and frontend (DO NOT duplicate logic)
   team_builder.py   ILP optimizer (OR-Tools), prediction, constraint validation
-cli/              CLI entry point
-  build_team.py     Interactive menu-driven team builder
-backend/          FastAPI server + PostgreSQL
+cli/              Early prototype/mockup (NOT the deliverable — kept for reference only)
+  build_team.py     Interactive menu-driven team builder (prototype)
+backend/          FastAPI server + PostgreSQL (the real backend)
   app/
     main.py         FastAPI app, /health endpoint
     database.py     SQLAlchemy engine (PostgreSQL)
@@ -55,25 +55,28 @@ visuals/          Generated charts and metrics CSVs
 
 ## Key Design Rules
 
-1. **`src/` is the single source of truth** for optimization and prediction logic. Both `cli/` and `backend/` must import from `src/`. Never duplicate optimizer code.
-2. **ILP, not greedy.** The backend currently has a greedy heuristic in `backend/app/services/optimizer.py` — this MUST be replaced with the ILP optimizer from `src/team_builder.py`.
-3. **Explanations are the #1 differentiator.** The report positions transparency/explainability as the core competitive advantage. Every recommendation must include human-readable explanations for why players were selected.
-4. **Position-specific models.** There are 4 separate ML models (GK, DEF, MID, FWD). Use `position_model_*.joblib` (basic RandomForest) — the advanced models have broken DEF/MID files (4.8KB each).
-5. **FPL constraints are strict:** budget cap (default 100.0), max 3 players per club, position requirements (2GK/5DEF/5MID/3FWD for full squad), valid formations for starting XI.
+1. **`src/` is the single source of truth** for optimization and prediction logic. The backend imports from `src/`. Never duplicate optimizer code. The `cli/` folder is just an early prototype — all new work goes through the backend API + React frontend.
+2. **The deliverable is a web app.** The report specifies React frontend + FastAPI backend + Firebase auth. The CLI was a mockup to prove the algorithm works. The final product must be the web system.
+3. **ILP, not greedy.** The backend currently has a greedy heuristic in `backend/app/services/optimizer.py` — this MUST be replaced with the ILP optimizer from `src/team_builder.py`.
+4. **Explanations are the #1 differentiator.** The report positions transparency/explainability as the core competitive advantage. Every recommendation must include human-readable explanations for why players were selected.
+5. **Position-specific models.** There are 4 separate ML models (GK, DEF, MID, FWD). Use `position_model_*.joblib` (basic RandomForest) — the advanced models have broken DEF/MID files (4.8KB each).
+6. **FPL constraints are strict:** budget cap (default 100.0), max 3 players per club, position requirements (2GK/5DEF/5MID/3FWD for full squad), valid formations for starting XI.
 
 ## Two Core Use Cases
 
 ### UC1 — Build Initial Squad (15 players)
-- User sets budget, formation, optional locked/banned players
-- System predicts season points → ILP optimizer → 15-player squad (11 starters + 4 bench)
-- Output includes explanations for why players were selected
-- **Status:** Works in CLI. Backend endpoint exists but uses wrong optimizer and has no explanations.
+- User sets budget, formation, optional locked/banned players via the **web UI**
+- System validates constraints → predicts season points → ILP optimizer → 15-player squad (11 starters + 4 bench)
+- Output includes player list, total cost, expected points, and **short explanations for key selections**
+- Exception flows: infeasible constraints → explain conflict; missing data → inform user; model unavailable → fallback; optimization timeout → return best-so-far
+- **Status:** Algorithm works (proven in CLI prototype). Backend endpoint exists but uses wrong optimizer, has no explanations, and needs the React frontend to consume it.
 
 ### UC2 — Recommend Weekly Lineup (starting 11 from existing squad)
-- User provides their 15-player squad + target gameweek
-- System predicts GW points → ILP optimizer → starting XI + bench order + captain
-- Output includes explanations + optional transfer suggestion
-- **Status:** NOT IMPLEMENTED. This is the biggest gap.
+- User provides/loads their current 15-player squad via the **web UI**
+- System validates squad → predicts GW points per player → selects optimal starting XI + bench order
+- Output includes starting 11, formation, bench order, expected points, and **short explanations**
+- Exception flows: invalid squad → highlight issues; missing GW data → offer refresh; model unavailable → fallback
+- **Status:** NOT IMPLEMENTED. This is the biggest gap. Needs gameweek prediction model, lineup optimizer, API endpoint, and frontend page.
 
 ## Database Schema (PostgreSQL)
 
@@ -87,14 +90,11 @@ Seed with: `python backend/scripts/seed_db.py`
 # Activate venv
 source .venv/bin/activate
 
-# CLI (interactive)
-python -m cli.build_team
-
-# CLI (non-interactive)
-python -m cli.build_team --budget 100 --formation 4-3-3
-
-# Backend
+# Backend server
 uvicorn backend.app.main:app --reload --port 5000
+
+# Frontend (once built)
+cd frontend && npm run dev
 
 # Tests
 python -m pytest tests/ -v
@@ -105,6 +105,9 @@ python -m training.train_position_models
 
 # Seed database
 python backend/scripts/seed_db.py
+
+# CLI prototype (reference only — not the deliverable)
+python -m cli.build_team --budget 100 --formation 4-3-3
 ```
 
 ## Test Plan (from report)
@@ -127,14 +130,14 @@ python backend/scripts/seed_db.py
 
 ### Phase 1: Foundation Fixes (est. ~8 dev-days)
 
-**Goal:** Unify architecture, fix inconsistencies, make backend match CLI.
+**Goal:** Unify architecture, fix inconsistencies, make the backend production-ready.
 
 - [ ] **1.1 Create `requirements.txt`** — pin all dependencies
 - [ ] **1.2 Replace backend greedy optimizer with ILP** — rewrite `backend/app/services/optimizer.py` to import and wrap `src.team_builder.build_team()`. Delete the greedy heuristic entirely.
 - [ ] **1.3 Align model files** — standardize on `position_model_*.joblib` (basic RF). The `advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4.8KB and likely broken.
-- [ ] **1.4 Extract explanation service** — create `src/explainer.py` by porting `FEATURE_EXPLANATIONS` dict and `get_top_features_for_player/position` from `cli/build_team.py`. Add explanation fields to API response schemas.
+- [ ] **1.4 Create explanation service** — create `src/explainer.py` with `FEATURE_EXPLANATIONS` dict and functions to get top features per player/position with human-readable text. The CLI prototype in `cli/build_team.py` has a reference implementation. Add explanation fields to API response schemas.
 - [ ] **1.5 Simplify API contract** — backend should read players from DB/CSV, not receive 500+ players in request body. Add `formation`, `locked_ids`, `banned_ids` to request schema.
-- [ ] **1.6 Extract bench builder to `src/`** — move `_build_bench_auto` from `cli/build_team.py` into `src/team_builder.py` so both CLI and backend share it.
+- [ ] **1.6 Add bench builder to `src/`** — implement full 15-player squad building in `src/team_builder.py` (the CLI prototype's `_build_bench_auto` has a reference implementation).
 - [ ] **1.7 Move DB creds to env var** — `os.environ.get("DATABASE_URL", default)` in `database.py`
 - [ ] **1.8 Add solver timeout** — `solver.SetTimeLimit(30_000)` in `src/team_builder.py:_solve_ilp`
 
