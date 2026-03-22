@@ -100,37 +100,29 @@ class SeasonTeamPlayerResponse(SeasonTeamPlayerBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class SquadPlayerInput(BaseModel):
-    player_id: int
-    name: str
-    position: str
-    price: float
-    team_id: int
-    features: dict[str, Any] = Field(default_factory=dict)
-
-
 class SquadGenerateRequest(BaseModel):
-    user_id: str
-    constraint_id: str
-    season_team_id: str
-    budget: float
-    players_data: list[SquadPlayerInput]
-    models_dir: str = "models"
+    budget: float = 100.0
+    formation: str = "4-3-3"
+    locked_ids: list[int] = Field(default_factory=list)
+    banned_ids: list[int] = Field(default_factory=list)
 
 
-class SquadPlayerSelectionResponse(BaseModel):
-    player_id: int
+class SquadPlayerResponse(BaseModel):
+    id: str
     name: str
+    team: str
     position: str
-    team_id: int
-    price: float
+    cost: float
     predicted_points: float
     is_starter: bool
     bench_order: int | None = None
-    selected_position: str
+    explanations: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SquadGenerateResponse(BaseModel):
-    season_team: SeasonTeamResponse
-    season_team_players: list[SeasonTeamPlayerResponse]
-    selected_players: list[SquadPlayerSelectionResponse]
+    formation: str
+    budget: float
+    total_cost: float
+    total_predicted_points: float
+    players: list[SquadPlayerResponse]
+    bench: list[SquadPlayerResponse]

@@ -28,6 +28,7 @@ FORMATION_COUNTS = {
     "5-3-2": {"GK": 1, "DEF": 5, "MID": 3, "FWD": 2},
     "5-4-1": {"GK": 1, "DEF": 5, "MID": 4, "FWD": 1},
 }
+FULL_SQUAD_COUNTS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}
 MODEL_FILENAMES = {
     "GK": "position_model_1.joblib",
     "DEF": "position_model_2.joblib",
@@ -150,6 +151,7 @@ def _build_solver() -> pywraplp.Solver:
         solver = pywraplp.Solver.CreateSolver("CBC")
     if solver is None:
         raise RuntimeError("No suitable MILP solver available (SCIP/CBC)")
+    solver.SetTimeLimit(30_000)
     return solver
 
 
@@ -437,3 +439,120 @@ def score_players(
         models_dir=models_dir,
         pred_mode=pred_mode,
     )
+
+
+def build_full_squad(
+    budget: float,
+    data_path: str = "data/players_merged_2024-25.csv",
+    models_dir: str = "models",
+    max_per_team: int = 3,
+    formation: str = "4-3-3",
+    method: str = "ilp",
+    pred_mode: str = "models",
+    locked_ids: set[str | int] | None = None,
+    banned_ids: set[str | int] | None = None,
+) -> dict:
+    """Build an optimal 15-player squad (11 starters + 4 bench) under FPL constraints.
+
+    Selects 2 GK, 5 DEF, 5 MID, 3 FWD in a single ILP solve, then splits into
+    starters (per requested formation) and bench (remaining 4, ordered by predicted points).
+    """
+    if method != "ilp":
+        raise ValueError("Only ILP method is supported")
+
+    df, meta = _prepare_player_df(
+        data_path=data_path,
+        models_dir=models_dir,
+        pred_mode=pred_mode,
+    )
+
+    formation_counts = _parse_formation(formation)
+
+    for position, required in FULL_SQUAD_COUNTS.items():
+        if (df["position"] == position).sum() < required:
+            raise ValueError(f"Not enough players for position {position}")
+
+    budget_int = int(round(budget * 10))
+
+    players = [
+        PlayerRecord(
+            idx=i,
+            player_id=str(row["id"]),
+            name=row["name"],
+            team=row["team"],
+            position=row["position"],
+            cost_int=int(row["cost_int"]),
+            cost=float(row["cost"]),
+            pred=float(row["pred"]),
+        )
+        for i, row in df.iterrows()
+    ]
+
+    locked_set = _normalize_ids(locked_ids)
+    banned_set = _normalize_ids(banned_ids)
+    _validate_locked_constraints(
+        players=players,
+        locked_ids=locked_set,
+        banned_ids=banned_set,
+        budget_int=budget_int,
+        max_per_team=max_per_team,
+        required_counts=FULL_SQUAD_COUNTS,
+    )
+
+    chosen = _solve_ilp(
+        players=players,
+        budget_int=budget_int,
+        max_per_team=max_per_team,
+        required_counts=FULL_SQUAD_COUNTS,
+        locked_ids=locked_set,
+        banned_ids=banned_set,
+    )
+
+    # Split into starters and bench based on formation
+    starters: list[PlayerRecord] = []
+    bench: list[PlayerRecord] = []
+    for position in POSITION_ORDER:
+        pos_players = sorted(
+            [p for p in chosen if p.position == position],
+            key=lambda p: p.pred,
+            reverse=True,
+        )
+        starter_count = formation_counts[position]
+        starters.extend(pos_players[:starter_count])
+        bench.extend(pos_players[starter_count:])
+
+    # Sort starters by position then name
+    starters_sorted = sorted(
+        starters,
+        key=lambda p: (POSITION_ORDER.index(p.position), p.name),
+    )
+    # Sort bench by predicted points descending (best sub first)
+    bench_sorted = sorted(bench, key=lambda p: p.pred, reverse=True)
+
+    total_cost_int = sum(p.cost_int for p in chosen)
+    total_pred = sum(p.pred for p in starters)
+
+    def _player_dict(p: PlayerRecord, is_starter: bool, bench_order: int | None) -> dict:
+        return {
+            "id": p.player_id,
+            "name": p.name,
+            "team": p.team,
+            "position": p.position,
+            "cost_int": p.cost_int,
+            "cost": p.cost,
+            "pred": p.pred,
+            "is_starter": is_starter,
+            "bench_order": bench_order,
+        }
+
+    return {
+        "formation": formation,
+        "budget": budget,
+        "budget_int": budget_int,
+        "total_cost_int": total_cost_int,
+        "total_cost": total_cost_int / 10.0,
+        "total_pred": float(total_pred),
+        "players": [_player_dict(p, True, None) for p in starters_sorted],
+        "bench": [_player_dict(p, False, i + 1) for i, p in enumerate(bench_sorted)],
+        "meta": meta,
+    }
