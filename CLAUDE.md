@@ -78,17 +78,36 @@ visuals/          Generated charts and metrics CSVs
 - Exception flows: invalid squad → highlight issues; missing GW data → offer refresh; model unavailable → fallback
 - **Status:** NOT IMPLEMENTED. This is the biggest gap. Needs gameweek prediction model, lineup optimizer, API endpoint, and frontend page.
 
-## Database Schema (PostgreSQL)
+## Database (PostgreSQL via Docker)
 
-6 tables: User, Constraint_Set, Team, Player, Season_Team, Season_Team_Player.
-Connection: `DATABASE_URL` env var (default: `postgresql+psycopg2://postgres:postgres@localhost:5432/automatic_champion`).
-Seed with: `python backend/scripts/seed_db.py`
+Postgres runs in Docker. The `automatic_champion` database is created automatically by the container.
+
+```bash
+docker compose up -d        # Start Postgres (runs on localhost:5432)
+docker compose down          # Stop Postgres (data persists in pgdata volume)
+```
+
+**Connection:** `DATABASE_URL` env var (default: `postgresql+psycopg2://postgres:postgres@localhost:5432/automatic_champion`)
+
+**6 tables:** User, Constraint_Set, Team, Player, Season_Team, Season_Team_Player.
+Tables are created via `Base.metadata.create_all()`. Seeded with 20 teams and 784 players (2024-25 season).
+
+**Status:** Schema matches the report ERD. Tables created and seeded. But Constraint_Set.value_json is stored and never read, and Season_Team/Season_Team_Player are written but never queried back.
 
 ## Running Things
 
 ```bash
+# Start database
+docker compose up -d
+
 # Activate venv
 source .venv/bin/activate
+
+# Create tables (first time only)
+python -c "import sys; sys.path.insert(0,'backend'); from app.database import engine, Base; from app.models import *; Base.metadata.create_all(bind=engine)"
+
+# Seed database (first time only)
+python backend/scripts/seed_db.py
 
 # Backend server
 uvicorn backend.app.main:app --reload --port 5000
@@ -102,9 +121,6 @@ python -m pytest tests/ -v
 # Train models
 python -m training.train_advanced_models
 python -m training.train_position_models
-
-# Seed database
-python backend/scripts/seed_db.py
 
 # CLI prototype (reference only — not the deliverable)
 python -m cli.build_team --budget 100 --formation 4-3-3
@@ -132,13 +148,13 @@ python -m cli.build_team --budget 100 --formation 4-3-3
 
 **Goal:** Unify architecture, fix inconsistencies, make the backend production-ready.
 
-- [ ] **1.1 Create `requirements.txt`** — pin all dependencies
+- [ ] **1.1 Create `requirements.txt`** — pin all dependencies (sqlalchemy and psycopg2-binary are installed but not pinned yet)
 - [ ] **1.2 Replace backend greedy optimizer with ILP** — rewrite `backend/app/services/optimizer.py` to import and wrap `src.team_builder.build_team()`. Delete the greedy heuristic entirely.
 - [ ] **1.3 Align model files** — standardize on `position_model_*.joblib` (basic RF). The `advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4.8KB and likely broken.
 - [ ] **1.4 Create explanation service** — create `src/explainer.py` with `FEATURE_EXPLANATIONS` dict and functions to get top features per player/position with human-readable text. The CLI prototype in `cli/build_team.py` has a reference implementation. Add explanation fields to API response schemas.
 - [ ] **1.5 Simplify API contract** — backend should read players from DB/CSV, not receive 500+ players in request body. Add `formation`, `locked_ids`, `banned_ids` to request schema.
 - [ ] **1.6 Add bench builder to `src/`** — implement full 15-player squad building in `src/team_builder.py` (the CLI prototype's `_build_bench_auto` has a reference implementation).
-- [ ] **1.7 Move DB creds to env var** — `os.environ.get("DATABASE_URL", default)` in `database.py`
+- [x] **1.7 Move DB creds to env var** — done: `database.py` reads `DATABASE_URL` from env
 - [ ] **1.8 Add solver timeout** — `solver.SetTimeLimit(30_000)` in `src/team_builder.py:_solve_ilp`
 
 ### Phase 2: UC2 — Weekly Lineup (est. ~10 dev-days)
@@ -184,7 +200,7 @@ python -m cli.build_team --budget 100 --formation 4-3-3
 ### Phase 6: Polish & Documentation (est. ~4 dev-days)
 
 - [ ] **6.1 README** — setup, architecture, how to run, API docs
-- [ ] **6.2 Docker Compose** — Postgres + backend + frontend
+- [x] **6.2 Docker Compose** — done: Postgres via `docker-compose.yml`. Backend + frontend containers can be added later.
 - [ ] **6.3 Backend logging** — Python logging module
 - [ ] **6.4 Clean up dead code** — remove greedy optimizer, unused scripts
 - [ ] **6.5 Wire Constraint_Set.value_json** — actually read and apply stored constraints
@@ -219,5 +235,4 @@ Both:                         Phase 6
 - `backend/app/services/optimizer.py` uses greedy heuristic instead of ILP — MUST replace (Phase 1.2)
 - `advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4.8KB — likely broken/degenerate
 - `Constraint_Set.value_json` is stored in DB but never read by the optimizer
-- Hardcoded DB credentials in `backend/app/database.py`
-- No `requirements.txt` or `pyproject.toml` yet
+- No `requirements.txt` or `pyproject.toml` yet (deps installed but not pinned)
