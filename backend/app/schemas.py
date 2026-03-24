@@ -126,3 +126,52 @@ class SquadGenerateResponse(BaseModel):
     total_predicted_points: float
     players: list[SquadPlayerResponse]
     bench: list[SquadPlayerResponse]
+
+
+# ── Lineup (UC2) schemas ────────────────────────────────────────────
+
+
+class LineupPlayerInput(BaseModel):
+    id: str
+    name: str
+    position: str
+    team: str
+    cost: float
+    pred: float
+
+
+class LineupRecommendRequest(BaseModel):
+    squad: list[LineupPlayerInput]  # exactly 15 players
+    gameweek: int | None = None  # None = auto-detect current GW
+    formation: str | None = None  # None = auto-pick best
+
+
+class LineupStarterResponse(BaseModel):
+    id: str
+    name: str
+    position: str
+    team: str
+    gw_points: float
+    is_captain: bool
+    is_vice_captain: bool
+    explanations: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class LineupBenchResponse(BaseModel):
+    id: str
+    name: str
+    position: str
+    team: str
+    gw_points: float
+    bench_order: int
+    explanations: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class LineupRecommendResponse(BaseModel):
+    formation: str
+    gameweek: int | None
+    captain_id: str
+    vice_captain_id: str
+    total_gw_points: float
+    starters: list[LineupStarterResponse]
+    bench: list[LineupBenchResponse]

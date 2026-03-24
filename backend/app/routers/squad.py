@@ -26,13 +26,13 @@ def _build_player_response(
     pid = str(player["id"])
     return SquadPlayerResponse(
         id=pid,
-        name=player["name"],
-        team=player["team"],
-        position=player["position"],
-        cost=player["cost"],
-        predicted_points=player["pred"],
-        is_starter=player["is_starter"],
-        bench_order=player.get("bench_order"),
+        name=str(player["name"]),
+        team=str(player["team"]),
+        position=str(player["position"]),
+        cost=float(player["cost"]),
+        predicted_points=float(player["pred"]),
+        is_starter=bool(player["is_starter"]),
+        bench_order=int(player["bench_order"]) if player.get("bench_order") is not None else None,
         explanations=explanations.get(pid, []),
     )
 
