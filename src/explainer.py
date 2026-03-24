@@ -139,7 +139,12 @@ def explain_selection(
 
     results = []
     for feature, importance in feat_imp[:top_k]:
-        value = row.get(feature)
+        raw_value = row.get(feature)
+        # Convert numpy types to native Python for JSON serialization
+        if hasattr(raw_value, "item"):
+            value = raw_value.item()
+        else:
+            value = raw_value
         results.append({
             "feature": feature,
             "value": value,

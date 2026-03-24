@@ -29,3 +29,4 @@ build/
 
 # Data (large files — tracked via Git LFS or excluded)
 *.zip
+MASTER.md

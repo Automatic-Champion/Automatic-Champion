@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+import logging
+
+from fastapi import APIRouter, HTTPException, status
+
+from ..schemas import (
+    LineupRecommendRequest,
+    LineupRecommendResponse,
+    LineupStarterResponse,
+    LineupBenchResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/lineup", tags=["lineup"])
+
+DATA_PATH = "data/players_merged_2024-25.csv"
+MODELS_DIR = "models"
+
+
+@router.post("/recommend", response_model=LineupRecommendResponse)
+def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse:
+    from src.gameweek_predictor import predict_gameweek_points
+    from src.lineup_optimizer import optimize_lineup
+
+    # Convert request models to plain dicts for src/ functions
+    squad = [p.model_dump() for p in payload.squad]
+
+    # Predict gameweek points
+    gw_predictions = predict_gameweek_points(squad, payload.gameweek)
+
+    # Optimize lineup
+    try:
+        result = optimize_lineup(squad, gw_predictions, payload.formation)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    # Generate explanations (non-fatal)
+    explanations: dict[str, list[dict]] = {}
+    try:
+        from src.explainer import explain_squad
+
+        all_players = [{"id": p["id"], "position": p["position"]} for p in squad]
+        explanations = explain_squad(
+            players=all_players,
+            data_path=DATA_PATH,
+            models_dir=MODELS_DIR,
+            top_k=3,
+        )
+    except Exception:
+        logger.warning("Explanation generation failed", exc_info=True)
+
+    starters = [
+        LineupStarterResponse(
+            id=s["id"],
+            name=s["name"],
+            position=s["position"],
+            team=s["team"],
+            gw_points=s["gw_points"],
+            is_captain=s["is_captain"],
+            is_vice_captain=s["is_vice_captain"],
+            explanations=explanations.get(s["id"], []),
+        )
+        for s in result["starters"]
+    ]
+
+    bench = [
+        LineupBenchResponse(
+            id=b["id"],
+            name=b["name"],
+            position=b["position"],
+            team=b["team"],
+            gw_points=b["gw_points"],
+            bench_order=b["bench_order"],
+            explanations=explanations.get(b["id"], []),
+        )
+        for b in result["bench"]
+    ]
+
+    return LineupRecommendResponse(
+        formation=result["formation"],
+        gameweek=payload.gameweek,
+        captain_id=result["captain_id"],
+        vice_captain_id=result["vice_captain_id"],
+        total_gw_points=result["total_gw_points"],
+        starters=starters,
+        bench=bench,
+    )
