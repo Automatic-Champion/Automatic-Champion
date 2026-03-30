@@ -18,3 +18,4 @@ uvicorn>=0.29
 pydantic>=2.6
 SQLAlchemy==2.0.48
 psycopg2-binary==2.9.11
+httpx>=0.28

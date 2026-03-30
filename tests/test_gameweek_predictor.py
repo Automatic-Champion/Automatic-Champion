@@ -5,7 +5,12 @@ from unittest.mock import patch
 import pytest
 
 from src.fpl_api import FPLAPIError
-from src.gameweek_predictor import PREDICTOR_VERSION, predict_gameweek_points
+from src.gameweek_predictor import (
+    PREDICTOR_VERSION,
+    predict_gameweek_points,
+    _match_fpl_player,
+    _normalize_name,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +30,8 @@ _MOCK_FPL_PLAYERS = {
     101: {
         "id": 101,
         "web_name": "Salah",
+        "first_name": "Mohamed",
+        "second_name": "Salah",
         "position": "MID",
         "team_id": 11,
         "form": 8.0,
@@ -39,6 +46,8 @@ _MOCK_FPL_PLAYERS = {
     102: {
         "id": 102,
         "web_name": "Haaland",
+        "first_name": "Erling",
+        "second_name": "Haaland",
         "position": "FWD",
         "team_id": 12,
         "form": 6.0,
@@ -49,6 +58,42 @@ _MOCK_FPL_PLAYERS = {
         "chance_of_playing": 100,
         "total_points": 180,
         "minutes": 1900,
+    },
+}
+
+
+# Extended mock for name-matching tests (covers the hard cases from Bug 2)
+_MOCK_FPL_EXTENDED = {
+    **_MOCK_FPL_PLAYERS,
+    201: {
+        "id": 201, "web_name": "Son", "first_name": "Heung-Min", "second_name": "Son",
+        "position": "MID", "team_id": 6, "form": 7.0, "points_per_game": 6.0,
+        "now_cost": 100, "ep_next": 7.5, "status": "a", "chance_of_playing": 100,
+        "total_points": 150, "minutes": 2200,
+    },
+    202: {
+        "id": 202, "web_name": "De Bruyne", "first_name": "Kevin", "second_name": "De Bruyne",
+        "position": "MID", "team_id": 12, "form": 5.0, "points_per_game": 5.5,
+        "now_cost": 95, "ep_next": 6.0, "status": "a", "chance_of_playing": 75,
+        "total_points": 80, "minutes": 1000,
+    },
+    203: {
+        "id": 203, "web_name": "N.Jackson", "first_name": "Nicolas", "second_name": "Jackson",
+        "position": "FWD", "team_id": 8, "form": 6.0, "points_per_game": 5.0,
+        "now_cost": 75, "ep_next": 5.5, "status": "a", "chance_of_playing": 100,
+        "total_points": 120, "minutes": 2000,
+    },
+    204: {
+        "id": 204, "web_name": "B.Silva", "first_name": "Bernardo", "second_name": "Silva",
+        "position": "MID", "team_id": 12, "form": 5.0, "points_per_game": 4.5,
+        "now_cost": 65, "ep_next": 4.0, "status": "a", "chance_of_playing": 100,
+        "total_points": 100, "minutes": 1800,
+    },
+    205: {
+        "id": 205, "web_name": "Alisson", "first_name": "Alisson", "second_name": "Becker",
+        "position": "GK", "team_id": 11, "form": 4.0, "points_per_game": 4.5,
+        "now_cost": 55, "ep_next": 4.0, "status": "a", "chance_of_playing": 100,
+        "total_points": 110, "minutes": 2500,
     },
 }
 
@@ -119,3 +164,129 @@ class TestFPLAPIFailure:
         for player in squad:
             pid = str(player["id"])
             assert preds[pid] == pytest.approx(player["pred"] / 38.0)
+
+    @patch("src.gameweek_predictor.get_current_gameweek", side_effect=TypeError("programming bug"))
+    def test_non_network_exception_bubbles_up(self, _mock_gw):
+        """TypeError (a programming bug) must NOT be silently swallowed."""
+        squad = _make_squad()
+        with pytest.raises(TypeError, match="programming bug"):
+            predict_gameweek_points(squad)
+
+
+# ---------------------------------------------------------------------------
+# Name matching tests
+# ---------------------------------------------------------------------------
+
+def _build_fpl_by_name(fpl_players):
+    """Build the fpl_by_name lookup and fpl_list from mock data."""
+    fpl_by_name: dict[str, list[dict]] = {}
+    fpl_list = list(fpl_players.values())
+    for fp in fpl_list:
+        key = fp["web_name"].lower()
+        fpl_by_name.setdefault(key, []).append(fp)
+    return fpl_by_name, fpl_list
+
+
+class TestNameMatching:
+    """Tests for _match_fpl_player with various name formats."""
+
+    def test_web_name_substring_match(self):
+        """Salah: web_name 'Salah' is substring of 'Mohamed Salah'."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Mohamed Salah", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["web_name"] == "Salah"
+
+    def test_son_heungmin(self):
+        """Son: web_name 'Son' is substring of 'Son Heung-min'."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Son Heung-min", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 201
+
+    def test_de_bruyne(self):
+        """De Bruyne: web_name 'De Bruyne' is substring of 'Kevin De Bruyne'."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Kevin De Bruyne", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 202
+
+    def test_nicolas_jackson(self):
+        """N.Jackson: web_name doesn't substring-match, falls back to full name."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Nicolas Jackson", "position": "FWD"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 203
+
+    def test_bernardo_silva(self):
+        """B.Silva: web_name doesn't substring-match, falls back to full name."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Bernardo Silva", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 204
+
+    def test_alisson(self):
+        """Alisson: exact web_name match."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Alisson", "position": "GK"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 205
+
+    def test_case_insensitive(self):
+        """Matching should be case-insensitive."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "MOHAMED SALAH", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["web_name"] == "Salah"
+
+    def test_unmatched_player_returns_none(self):
+        """A completely unknown player should return None."""
+        fpl_by_name, fpl_list = _build_fpl_by_name(_MOCK_FPL_EXTENDED)
+        player = {"name": "Nonexistent Player", "position": "DEF"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is None
+
+    def test_position_disambiguation(self):
+        """When multiple candidates match, prefer same-position."""
+        # Create two players with similar names but different positions
+        fpl_data = {
+            1: {"id": 1, "web_name": "Smith", "first_name": "John", "second_name": "Smith",
+                "position": "DEF", "team_id": 1},
+            2: {"id": 2, "web_name": "Smith", "first_name": "Adam", "second_name": "Smith",
+                "position": "MID", "team_id": 2},
+        }
+        fpl_by_name, fpl_list = _build_fpl_by_name(fpl_data)
+        player = {"name": "Adam Smith", "position": "MID"}
+        match = _match_fpl_player(player, fpl_by_name, fpl_list)
+        assert match is not None
+        assert match["id"] == 2
+
+
+class TestNameMatchingIntegration:
+    """End-to-end tests: verify matched players get FPL predictions, not fallback."""
+
+    @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_EXTENDED)
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_nicolas_jackson_gets_fpl_prediction(self, _mock_gw, _mock_players):
+        squad = [
+            {"id": "10", "name": "Nicolas Jackson", "position": "FWD", "team": "Chelsea", "pred": 100.0},
+        ]
+        preds = predict_gameweek_points(squad)
+        # Should get ep_next=5.5, NOT fallback 100/38=2.63
+        assert preds["10"] == 5.5
+
+    @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_EXTENDED)
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_bernardo_silva_gets_fpl_prediction(self, _mock_gw, _mock_players):
+        squad = [
+            {"id": "11", "name": "Bernardo Silva", "position": "MID", "team": "Man City", "pred": 90.0},
+        ]
+        preds = predict_gameweek_points(squad)
+        assert preds["11"] == 4.0  # ep_next

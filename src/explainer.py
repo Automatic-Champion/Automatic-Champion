@@ -79,39 +79,21 @@ def _explain_feature(feature_name: str, value: object) -> str:
     return "This stat suggests consistent performance in past seasons."
 
 
-def explain_selection(
+def _explain_selection_preloaded(
     player_id: str,
     position: str,
-    data_path: str,
-    models_dir: str,
+    df: pd.DataFrame,
+    models: dict[str, object],
     top_k: int = 3,
 ) -> list[dict]:
-    """Return top-k feature explanations for why a player was selected.
-
-    Each item: {"feature": str, "value": any, "importance": float, "explanation": str}
-    """
-    if joblib is None:
-        warnings.warn("joblib is required to load models for explanations")
+    """Return top-k feature explanations using pre-loaded DataFrame and models."""
+    model = models.get(position)
+    if model is None:
         return []
 
-    model_filename = MODEL_FILENAMES.get(position)
-    if model_filename is None:
-        return []
-
-    model_path = Path(models_dir) / model_filename
-    if not model_path.exists():
-        warnings.warn(f"Model file not found: {model_path}")
-        return []
-
-    model = joblib.load(model_path)
     if not hasattr(model, "feature_importances_"):
         return []
 
-    data_file = Path(data_path)
-    if not data_file.exists():
-        return []
-
-    df = pd.read_csv(data_file)
     row = df[df["id"].astype(str) == str(player_id)]
     if row.empty:
         return []
@@ -154,6 +136,48 @@ def explain_selection(
     return results
 
 
+def explain_selection(
+    player_id: str,
+    position: str,
+    data_path: str,
+    models_dir: str,
+    top_k: int = 3,
+) -> list[dict]:
+    """Return top-k feature explanations for why a player was selected.
+
+    Each item: {"feature": str, "value": any, "importance": float, "explanation": str}
+    """
+    if joblib is None:
+        warnings.warn("joblib is required to load models for explanations")
+        return []
+
+    model_filename = MODEL_FILENAMES.get(position)
+    if model_filename is None:
+        return []
+
+    model_path = Path(models_dir) / model_filename
+    if not model_path.exists():
+        warnings.warn(f"Model file not found: {model_path}")
+        return []
+
+    model = joblib.load(model_path)
+
+    data_file = Path(data_path)
+    if not data_file.exists():
+        return []
+
+    df = pd.read_csv(data_file)
+    models = {position: model}
+
+    return _explain_selection_preloaded(
+        player_id=player_id,
+        position=position,
+        df=df,
+        models=models,
+        top_k=top_k,
+    )
+
+
 def explain_squad(
     players: list[dict],
     data_path: str,
@@ -164,15 +188,37 @@ def explain_squad(
 
     Returns dict mapping player_id -> list of feature explanations.
     """
+    if joblib is None:
+        warnings.warn("joblib is required to load models for explanations")
+        return {str(player["id"]): [] for player in players}
+
+    data_file = Path(data_path)
+    if not data_file.exists():
+        return {str(player["id"]): [] for player in players}
+
+    df = pd.read_csv(data_file)
+
+    # Load each needed model once
+    needed_positions = {player["position"] for player in players}
+    models: dict[str, object] = {}
+    for position in needed_positions:
+        model_filename = MODEL_FILENAMES.get(position)
+        if model_filename is None:
+            continue
+        model_path = Path(models_dir) / model_filename
+        if not model_path.exists():
+            continue
+        models[position] = joblib.load(model_path)
+
     result: dict[str, list[dict]] = {}
     for player in players:
         pid = str(player["id"])
         position = player["position"]
-        result[pid] = explain_selection(
+        result[pid] = _explain_selection_preloaded(
             player_id=pid,
             position=position,
-            data_path=data_path,
-            models_dir=models_dir,
+            df=df,
+            models=models,
             top_k=top_k,
         )
     return result

@@ -5,6 +5,8 @@ Uses only stdlib (urllib.request) for HTTP.
 """
 
 import json
+import sys
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -36,24 +38,28 @@ _DEFAULT_TTL = 300  # 5 minutes
 
 _cache: dict[str, tuple[float, object]] = {}  # key -> (timestamp, data)
 _cache_ttl: int = _DEFAULT_TTL
+_cache_lock = threading.Lock()
 
 
 def clear_cache() -> None:
     """Invalidate all cached API responses."""
-    _cache.clear()
+    with _cache_lock:
+        _cache.clear()
 
 
 def _get_cached(key: str) -> Optional[object]:
-    if key in _cache:
-        ts, data = _cache[key]
-        if time.time() - ts < _cache_ttl:
-            return data
-        del _cache[key]
-    return None
+    with _cache_lock:
+        if key in _cache:
+            ts, data = _cache[key]
+            if time.time() - ts < _cache_ttl:
+                return data
+            del _cache[key]
+        return None
 
 
 def _set_cached(key: str, data: object) -> None:
-    _cache[key] = (time.time(), data)
+    with _cache_lock:
+        _cache[key] = (time.time(), data)
 
 # ---------------------------------------------------------------------------
 # Raw HTTP helpers
@@ -67,10 +73,10 @@ def _fetch_json(url: str) -> object:
             if resp.status != 200:
                 raise FPLAPIError(f"FPL API returned status {resp.status} for {url}")
             raw = resp.read()
-    except urllib.error.URLError as exc:
-        raise FPLAPIError(f"FPL API unreachable: {exc}") from exc
     except urllib.error.HTTPError as exc:
         raise FPLAPIError(f"FPL API HTTP error {exc.code}: {exc.reason}") from exc
+    except urllib.error.URLError as exc:
+        raise FPLAPIError(f"FPL API unreachable: {exc}") from exc
 
     try:
         return json.loads(raw)
@@ -125,21 +131,27 @@ def get_player_data() -> dict[int, dict]:
     bootstrap = fetch_bootstrap()
     players: dict[int, dict] = {}
     for p in bootstrap.get("elements", []):
-        pid = p["id"]
-        players[pid] = {
-            "id": pid,
-            "web_name": p["web_name"],
-            "position": POSITION_MAP.get(p["element_type"], "UNK"),
-            "team_id": p["team"],
-            "form": float(p["form"]) if p.get("form") is not None else 0.0,
-            "points_per_game": float(p["points_per_game"]) if p.get("points_per_game") is not None else 0.0,
-            "now_cost": p["now_cost"],
-            "ep_next": float(p["ep_next"]) if p.get("ep_next") is not None else None,
-            "status": p.get("status", ""),
-            "chance_of_playing": p.get("chance_of_playing_next_round"),
-            "total_points": p.get("total_points", 0),
-            "minutes": p.get("minutes", 0),
-        }
+        try:
+            pid = p["id"]
+            players[pid] = {
+                "id": pid,
+                "web_name": p["web_name"],
+                "first_name": p.get("first_name", ""),
+                "second_name": p.get("second_name", ""),
+                "position": POSITION_MAP.get(p["element_type"], "UNK"),
+                "team_id": p["team"],
+                "form": float(p["form"]) if p.get("form") is not None else 0.0,
+                "points_per_game": float(p["points_per_game"]) if p.get("points_per_game") is not None else 0.0,
+                "now_cost": p["now_cost"],
+                "ep_next": float(p["ep_next"]) if p.get("ep_next") is not None else None,
+                "status": p.get("status", ""),
+                "chance_of_playing": p.get("chance_of_playing_next_round"),
+                "total_points": p.get("total_points", 0),
+                "minutes": p.get("minutes", 0),
+            }
+        except KeyError as exc:
+            print(f"Warning: skipping malformed player entry (missing {exc})", file=sys.stderr)
+            continue
     return players
 
 

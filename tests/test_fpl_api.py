@@ -1,6 +1,7 @@
 """Tests for src.fpl_api — all HTTP calls are mocked."""
 
 import json
+import threading
 from unittest import mock
 
 import pytest
@@ -233,6 +234,69 @@ class TestCache:
         # Second call should use cache
         fetch_bootstrap()
         assert mock_open.call_count == 1
+
+
+class TestConcurrentCacheAccess:
+    @mock.patch("src.fpl_api.urllib.request.urlopen")
+    def test_concurrent_fetch_bootstrap_no_corruption(self, mock_open):
+        mock_open.return_value = _mock_urlopen(MOCK_BOOTSTRAP)
+        errors: list[Exception] = []
+
+        def call_bootstrap():
+            try:
+                fetch_bootstrap()
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=call_bootstrap) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == [], f"Concurrent fetch_bootstrap raised: {errors}"
+
+
+class TestMalformedPlayerEntry:
+    @mock.patch("src.fpl_api.urllib.request.urlopen")
+    def test_skips_malformed_player(self, mock_open):
+        """get_player_data skips entries missing required keys like 'id'."""
+        bootstrap = {
+            "events": [],
+            "elements": [
+                {
+                    # Missing "id" key — should be skipped
+                    "web_name": "Ghost",
+                    "element_type": 3,
+                    "team": 1,
+                    "form": "0.0",
+                    "points_per_game": "0.0",
+                    "now_cost": 50,
+                    "ep_next": None,
+                },
+                {
+                    "id": 99,
+                    "web_name": "Valid",
+                    "element_type": 4,
+                    "team": 2,
+                    "form": "5.0",
+                    "points_per_game": "4.0",
+                    "now_cost": 80,
+                    "ep_next": "3.0",
+                    "status": "a",
+                    "chance_of_playing_next_round": 100,
+                    "total_points": 50,
+                    "minutes": 900,
+                },
+            ],
+            "teams": [],
+        }
+        mock_open.return_value = _mock_urlopen(bootstrap)
+        players = get_player_data()
+        # Only the valid player should be present
+        assert len(players) == 1
+        assert 99 in players
+        assert players[99]["web_name"] == "Valid"
 
 
 class TestErrorHandling:
