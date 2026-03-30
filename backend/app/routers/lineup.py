@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, status
 
+from ..config import DATA_PATH, MODELS_DIR
 from ..schemas import (
     LineupRecommendRequest,
     LineupRecommendResponse,
@@ -15,20 +16,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/lineup", tags=["lineup"])
 
-DATA_PATH = "data/players_merged_2024-25.csv"
-MODELS_DIR = "models"
-
 
 @router.post("/recommend", response_model=LineupRecommendResponse)
 def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse:
+    from src.fpl_api import get_current_gameweek
     from src.gameweek_predictor import predict_gameweek_points
     from src.lineup_optimizer import optimize_lineup
 
     # Convert request models to plain dicts for src/ functions
     squad = [p.model_dump() for p in payload.squad]
 
+    # Resolve gameweek before passing to predictor
+    resolved_gameweek = payload.gameweek
+    if resolved_gameweek is None:
+        resolved_gameweek = get_current_gameweek()
+
     # Predict gameweek points
-    gw_predictions = predict_gameweek_points(squad, payload.gameweek)
+    gw_predictions = predict_gameweek_points(squad, resolved_gameweek)
 
     # Optimize lineup
     try:
@@ -82,7 +86,7 @@ def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse
 
     return LineupRecommendResponse(
         formation=result["formation"],
-        gameweek=payload.gameweek,
+        gameweek=resolved_gameweek,
         captain_id=result["captain_id"],
         vice_captain_id=result["vice_captain_id"],
         total_gw_points=result["total_gw_points"],

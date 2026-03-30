@@ -50,14 +50,16 @@ def predict_gameweek_points(
         if gameweek is None:
             gameweek = get_current_gameweek()
         fpl_players = get_player_data()
-    except (FPLAPIError, Exception):
+    except (FPLAPIError, ConnectionError, TimeoutError, OSError, ValueError):
         logger.warning("FPL API unavailable — falling back to season predictions")
         fpl_players = None
 
-    # Build a lookup: lowercase web_name → list of FPL player dicts
+    # Build lookups for name matching
     fpl_by_name: dict[str, list[dict]] = {}
+    fpl_list: list[dict] = []
     if fpl_players is not None:
-        for fp in fpl_players.values():
+        fpl_list = list(fpl_players.values())
+        for fp in fpl_list:
             key = fp["web_name"].lower()
             fpl_by_name.setdefault(key, []).append(fp)
 
@@ -73,7 +75,7 @@ def predict_gameweek_points(
             predictions[pid] = fallback
             continue
 
-        matched = _match_fpl_player(player, fpl_by_name)
+        matched = _match_fpl_player(player, fpl_by_name, fpl_list)
         if matched is None:
             predictions[pid] = fallback
             continue
@@ -90,28 +92,92 @@ def predict_gameweek_points(
     return predictions
 
 
+def _normalize_name(name: str) -> str:
+    """Lowercase, strip accents-ish chars, remove dots/hyphens for fuzzy compare."""
+    return name.lower().replace(".", " ").replace("-", " ").strip()
+
+
+def _word_boundary_match(needle: str, haystack: str) -> bool:
+    """Check if needle appears in haystack as a whole word (not mid-word)."""
+    haystack_words = haystack.replace("-", " ").split()
+    needle_words = needle.replace("-", " ").split()
+    # Multi-word web_names (e.g. "de bruyne"): check all words present
+    if len(needle_words) > 1:
+        return all(nw in haystack_words for nw in needle_words)
+    # Single word: must be an exact word match in the haystack
+    return needle in haystack_words
+
+
 def _match_fpl_player(
     squad_player: dict,
     fpl_by_name: dict[str, list[dict]],
+    fpl_list: list[dict],
 ) -> dict | None:
-    """Match a squad player to an FPL API player by name (substring, case-insensitive).
+    """Match a squad player to an FPL API player by name.
 
-    If multiple FPL players share the same web_name, prefer the one whose
-    position matches the squad player's position.
+    Matching strategies (tried in order):
+    1. FPL web_name matches a whole word in the squad player name (case-insensitive).
+    2. Squad player's last name is a substring of FPL second_name.
+    3. Squad player name is a substring of FPL full name (first_name + second_name).
+    4. Normalized token overlap — at least 2 shared tokens and same position.
+
+    If multiple candidates match, prefer same-position matches.
     """
     squad_name_lower = squad_player["name"].lower()
+    squad_name_norm = _normalize_name(squad_player["name"])
+    squad_position = squad_player.get("position", "")
 
+    # Strategy 1: web_name as whole-word match in squad name
     candidates: list[dict] = []
     for web_name_lower, fps in fpl_by_name.items():
-        if web_name_lower in squad_name_lower:
+        if _word_boundary_match(web_name_lower, squad_name_lower):
             candidates.extend(fps)
 
-    if not candidates:
-        return None
+    if candidates:
+        return _pick_best(candidates, squad_position)
 
-    # Prefer same-position match
+    # Strategy 2 & 3: match against FPL full name
+    # Extract squad player's last name (last word)
+    squad_parts = squad_name_lower.split()
+    squad_last = squad_parts[-1] if squad_parts else ""
+
+    for fp in fpl_list:
+        fpl_second = fp.get("second_name", "").lower()
+        fpl_full = f"{fp.get('first_name', '')} {fp.get('second_name', '')}".lower().strip()
+
+        # Strategy 2: squad last name matches FPL second_name
+        if squad_last and len(squad_last) > 2 and squad_last in fpl_second:
+            candidates.append(fp)
+            continue
+
+        # Strategy 3: squad full name is a substring of FPL full name (or vice versa)
+        if squad_name_lower in fpl_full or fpl_full in squad_name_lower:
+            candidates.append(fp)
+            continue
+
+    if candidates:
+        return _pick_best(candidates, squad_position)
+
+    # Strategy 4: normalized token overlap (handles dots, hyphens)
+    squad_tokens = set(squad_name_norm.split())
+    for fp in fpl_list:
+        fpl_full_norm = _normalize_name(
+            f"{fp.get('first_name', '')} {fp.get('second_name', '')} {fp.get('web_name', '')}"
+        )
+        fpl_tokens = set(fpl_full_norm.split())
+        shared = squad_tokens & fpl_tokens
+        if len(shared) >= 2 and fp.get("position") == squad_position:
+            candidates.append(fp)
+
+    if candidates:
+        return _pick_best(candidates, squad_position)
+
+    return None
+
+
+def _pick_best(candidates: list[dict], position: str) -> dict:
+    """From a list of FPL candidate matches, prefer same-position."""
     for c in candidates:
-        if c["position"] == squad_player["position"]:
+        if c.get("position") == position:
             return c
-
     return candidates[0]

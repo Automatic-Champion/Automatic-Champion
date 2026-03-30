@@ -9,14 +9,12 @@ from ..schemas import (
     SquadGenerateResponse,
     SquadPlayerResponse,
 )
+from ..config import DATA_PATH, MODELS_DIR
 from ..services.optimizer import OptimizationError, generate_optimal_squad
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/squad", tags=["squad"])
-
-DATA_PATH = "data/players_merged_2024-25.csv"
-MODELS_DIR = "models"
 
 
 def _build_player_response(

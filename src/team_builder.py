@@ -272,6 +272,7 @@ def _prepare_player_df(
     df = df[df["id"].notna() & df["team_name"].notna()]
     df = df[df["id"].astype(str).str.strip() != ""]
     df = df[df["team_name"].astype(str).str.strip() != ""]
+    df["id"] = df["id"].astype(float).astype(int).astype(str)
 
     df["name"] = (
         df[["first_name", "second_name"]]

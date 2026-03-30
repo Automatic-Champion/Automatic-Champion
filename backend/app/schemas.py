@@ -101,7 +101,7 @@ class SeasonTeamPlayerResponse(SeasonTeamPlayerBase):
 
 
 class SquadGenerateRequest(BaseModel):
-    budget: float = 100.0
+    budget: float = Field(default=100.0, ge=1.0, le=500.0)
     formation: str = "4-3-3"
     locked_ids: list[int] = Field(default_factory=list)
     banned_ids: list[int] = Field(default_factory=list)
