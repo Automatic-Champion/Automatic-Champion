@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -38,6 +39,13 @@ FEATURE_EXPLANATIONS = {
     "goals_conceded": "Defence record: affects clean sheets and bonus points.",
 }
 
+MOMENTUM_EXPLANATIONS = {
+    "momentum_total_points": "Points trend: positive means improving, negative means declining",
+    "momentum_minutes": "Playing time trend: increasing minutes suggests growing role",
+    "momentum_ict_index": "Involvement trend: combines influence, creativity and threat changes",
+    "momentum_goals_scored": "Scoring trend: improving or declining goal output",
+}
+
 FEATURE_PRETTY = {
     "gw_saves": "saves",
     "gw_games_played": "games played",
@@ -48,6 +56,10 @@ FEATURE_PRETTY = {
     "goals_conceded": "goals conceded",
     "yellow_cards": "yellow cards",
     "red_cards": "red cards",
+    "momentum_total_points": "points momentum",
+    "momentum_minutes": "minutes momentum",
+    "momentum_ict_index": "ICT momentum",
+    "momentum_goals_scored": "goals momentum",
 }
 
 POSITION_MODEL_CODE = {"GK": 1, "DEF": 2, "MID": 3, "FWD": 4}
@@ -59,17 +71,28 @@ def _pretty_feature_name(feature: str) -> str:
     return feature.replace("_", " ")
 
 
+_LAG_LABELS = {
+    "1_years_past_": "Last season",
+    "2_years_past_": "Two seasons ago",
+    "3_years_past_": "Three seasons ago",
+}
+
+
 def _explain_feature(feature_name: str, value: object) -> str:
     if feature_name == "price_now":
         return FEATURE_EXPLANATIONS["price_now"]
 
-    if feature_name.startswith("1_years_past_"):
-        base = feature_name.replace("1_years_past_", "")
-        pretty = _pretty_feature_name(base)
-        why = FEATURE_EXPLANATIONS.get(base) or FEATURE_EXPLANATIONS.get(pretty)
-        if why:
-            return f"Last season {pretty}: {value} — {why}"
-        return f"Last season {pretty}: {value} — This suggests steady returns over the season."
+    for prefix, label in _LAG_LABELS.items():
+        if feature_name.startswith(prefix):
+            base = feature_name[len(prefix):]
+            pretty = _pretty_feature_name(base)
+            why = FEATURE_EXPLANATIONS.get(base) or FEATURE_EXPLANATIONS.get(pretty)
+            if why:
+                return f"{label} {pretty}: {value} — {why}"
+            return f"{label} {pretty}: {value} — This suggests steady returns over the season."
+
+    if feature_name in MOMENTUM_EXPLANATIONS:
+        return MOMENTUM_EXPLANATIONS[feature_name]
 
     key = feature_name.lower()
     why = FEATURE_EXPLANATIONS.get(key)
@@ -91,7 +114,11 @@ def _explain_selection_preloaded(
     if model is None:
         return []
 
-    if not hasattr(model, "feature_importances_"):
+    if hasattr(model, "feature_importances_"):
+        importances_array = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        importances_array = np.abs(model.coef_)
+    else:
         return []
 
     row = df[df["id"].astype(str) == str(player_id)]
@@ -108,7 +135,7 @@ def _explain_selection_preloaded(
         except ValueError:
             return []
 
-    importances = model.feature_importances_
+    importances = importances_array
     if len(importances) != len(feature_cols):
         return []
 
