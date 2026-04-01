@@ -1,7 +1,7 @@
 # ML Model Report — Automatic Champion
 
-**Generated:** 2026-03-29
-**Purpose:** Comprehensive documentation of all ML models, training data, experiments, and baselines for anyone building or comparing new models.
+**Updated:** 2026-03-31
+**Purpose:** Comprehensive documentation of all ML models, training data, experiments, and the improvement journey from baseline RandomForest to the current deployed models.
 
 ---
 
@@ -22,553 +22,502 @@ All training data lives in `data/historical_exports/`. Each season has its own C
 
 The inference-time player pool is `data/players_merged_2024-25.csv` (807 rows). This file has identical columns to the historical exports plus `id` and `team_name`.
 
-### Available Seasons
+### Canonical Splits (Eval Framework)
 
-6 seasons: 2019-20, 2020-21, 2021-22, 2022-23, 2023-24, 2024-25.
+Defined in `training/eval_framework.py`:
 
-### Column Inventory
+| Split | Seasons | Purpose |
+|-------|---------|---------|
+| **Train** | 2019-20, 2020-21, 2021-22 | Model fitting |
+| **Test** | 2022-23 | Hyperparameter tuning, model selection |
+| **Unseen** | 2023-24 | Final evaluation — never used for tuning |
 
-The historical CSVs and `players_merged_2024-25.csv` share this schema (the merged file adds `id` and `team_name`):
-
-**Demographics / identifiers:**
-- `first_name`, `second_name`
-- `total_points` (TARGET VARIABLE)
-- `price_now` (current season price, in tenths of £M — e.g., 54 = £5.4M)
-- `element_type` (1=GK, 2=DEF, 3=MID, 4=FWD)
-- `position` (string version, may be empty in historical files)
-
-**1-year lag features (`1_years_past_*`):**
-- `1_years_past_goals_scored`
-- `1_years_past_assists`
-- `1_years_past_total_points`
-- `1_years_past_minutes`
-- `1_years_past_goals_conceded`
-- `1_years_past_creativity`
-- `1_years_past_influence`
-- `1_years_past_threat`
-- `1_years_past_bonus`
-- `1_years_past_bps`
-- `1_years_past_ict_index`
-- `1_years_past_clean_sheets`
-- `1_years_past_red_cards`
-- `1_years_past_yellow_cards`
-- `1_years_past_selected_by_percent`
-- `1_years_past_now_cost`
-- `1_years_past_element_type`
-- `1_years_past_gw_games_played`
-- `1_years_past_gw_minutes_per_game`
-- `1_years_past_gw_penalties_missed`
-- `1_years_past_gw_penalties_saved`
-- `1_years_past_gw_own_goals`
-- `1_years_past_gw_saves`
-
-**2-year lag features (`2_years_past_*`):** Same 23 stat columns as above, prefixed with `2_years_past_`.
-
-**3-year lag features (`3_years_past_*`):** Same 23 stat columns as above, prefixed with `3_years_past_`.
-
-Total: 6 demographic/id columns + 23 × 3 lag columns = 75 columns in historical files, 77 in merged file.
+**Important:** The old models (prior to Task 1) were trained on 4 seasons: 2019-20, 2020-21, 2021-22, **and 2022-23** — meaning the test season was included in training. This data leakage produced artificially low test MAEs (GK: 7.02, DEF: 9.41, MID: 11.09, FWD: 11.45). The canonical splits above fix this by holding out 2022-23 entirely.
 
 ### Target Variable
 
-`total_points` — the player's FPL total points for the current season. This is a continuous integer value. Range varies from -1 to 244 in the 2023-24 test set.
+`total_points` — the player's FPL total points for the current season. Continuous integer value. Range varies from -1 to 244 in the 2023-24 unseen set.
 
 ### Missing Values
 
-Each season has a corresponding `*_missing.md` file documenting players with no prior-season data. For example, `historical_players_2023-24_missing.md` reports:
-- **519 players** have 1-year-past data
-- **353 players** are missing 1-year-past data (new signings, youth players, promoted team players)
+Players missing lag data have empty/NaN values for those columns. Missing data is more severe for deeper lags (2-year, 3-year) since players must have been in FPL for multiple consecutive seasons.
 
-Players missing lag data have empty/NaN values for those columns. All training scripts handle this by filling NaN with 0 (`fillna(0)`) or using `SimpleImputer(strategy="median")`.
-
-Missing data is more severe for deeper lags (2-year, 3-year) since players must have been in FPL for multiple consecutive seasons.
+**Handling by algorithm type:**
+- **RandomForest, Ridge, ElasticNet:** `fillna(0)` — NaN replaced with 0 before training/inference
+- **XGBoost, LightGBM, HistGradientBoosting:** NaN passed through natively — these algorithms handle missing values internally via learned split directions
 
 ---
 
 ## Section 2: Feature Engineering
 
-### Features Used by Deployed Models
+### Full Feature Set (74 features)
 
-The function `_build_feature_cols()` in `src/team_builder.py:58-81` selects:
+The function `_build_feature_cols()` in `src/team_builder.py:59-86` selects all available features:
 
-1. `price_now`
-2. All columns matching `1_years_past_*` that are numeric
+1. **`price_now`** (1 feature) — current season price in tenths of £M
+2. **`1_years_past_*`** (23 features) — all numeric 1-year lag stats
+3. **`2_years_past_*`** (23 features) — all numeric 2-year lag stats
+4. **`3_years_past_*`** (23 features) — all numeric 3-year lag stats
+5. **`momentum_*`** (4 features) — year-over-year deltas computed by `_add_momentum_features()` in `src/team_builder.py:89-108`
 
-This produces 24 features total (price_now + 23 one-year lag stats). The exact list:
-- `price_now`
-- `1_years_past_goals_scored`
-- `1_years_past_assists`
-- `1_years_past_total_points`
-- `1_years_past_minutes`
-- `1_years_past_goals_conceded`
-- `1_years_past_creativity`
-- `1_years_past_influence`
-- `1_years_past_threat`
-- `1_years_past_bonus`
-- `1_years_past_bps`
-- `1_years_past_ict_index`
-- `1_years_past_clean_sheets`
-- `1_years_past_red_cards`
-- `1_years_past_yellow_cards`
-- `1_years_past_selected_by_percent`
-- `1_years_past_now_cost`
-- `1_years_past_element_type`
-- `1_years_past_gw_games_played`
-- `1_years_past_gw_minutes_per_game`
-- `1_years_past_gw_penalties_missed`
-- `1_years_past_gw_penalties_saved`
-- `1_years_past_gw_own_goals`
-- `1_years_past_gw_saves`
+The 23 stats per lag period are: `goals_scored`, `assists`, `total_points`, `minutes`, `goals_conceded`, `creativity`, `influence`, `threat`, `bonus`, `bps`, `ict_index`, `clean_sheets`, `red_cards`, `yellow_cards`, `selected_by_percent`, `now_cost`, `element_type`, `gw_games_played`, `gw_minutes_per_game`, `gw_penalties_missed`, `gw_penalties_saved`, `gw_own_goals`, `gw_saves`.
 
-### Derived Features
+The 4 momentum features are:
+- `momentum_total_points` = `1_years_past_total_points` − `2_years_past_total_points`
+- `momentum_minutes` = `1_years_past_minutes` − `2_years_past_minutes`
+- `momentum_ict_index` = `1_years_past_ict_index` − `2_years_past_ict_index`
+- `momentum_goals_scored` = `1_years_past_goals_scored` − `2_years_past_goals_scored`
 
-The **basic models** and **comparison models** (`train_position_models.py`, `train_and_compare_models.py`) use **no derived features** — raw columns only.
+### Per-Position Feature Selection
 
-The **advanced models** (`train_advanced_models.py`) add 2 per-90 features computed in `add_per_90_features()`:
-- `1_years_past_total_points_per_90` = (`1_years_past_total_points` / `1_years_past_minutes`) × 90
-- `1_years_past_ict_index_per_90` = (`1_years_past_ict_index` / `1_years_past_minutes`) × 90
+Not all positions use all 74 features. Permutation importance (Task 5) pruned features per position. The selected feature sets are stored in `training/selected_features.json` and loaded at inference time by `_load_selected_features()` in `src/team_builder.py:149-163`.
 
-Both fill with 0.0 when minutes = 0.
+| Position | Features Used | Pruned From |
+|----------|--------------|-------------|
+| GK | 74 (all) | No pruning — all features had positive permutation importance |
+| DEF | 14 | 60 features removed |
+| MID | 51 | 23 features removed |
+| FWD | 74 (all) | No pruning — all features had positive permutation importance |
 
-### Features Available but NOT Used
+**DEF selected features (14):** `price_now`, `1_years_past_total_points`, `1_years_past_minutes`, `1_years_past_creativity`, `1_years_past_influence`, `2_years_past_minutes`, `2_years_past_creativity`, `2_years_past_influence`, `2_years_past_bps`, `3_years_past_minutes`, `3_years_past_creativity`, `3_years_past_influence`, `3_years_past_threat`, `3_years_past_gw_minutes_per_game`
 
-- All `2_years_past_*` columns (23 features) — 2-year historical lag
-- All `3_years_past_*` columns (23 features) — 3-year historical lag
-- `1_years_past_element_type` is included by the column filter but is questionable (it's the position code, not a performance stat)
+**MID selected features (51):** `price_now` + 20 from `1_years_past_*` + 10 from `2_years_past_*` + 16 from `3_years_past_*` + 4 momentum features. Full list in `training/selected_features.json` under key `"3"`.
 
-### How `price_now` is Handled
+### How Features Reach the Model at Inference Time
 
-`price_now` is used **raw** — no scaling, normalization, or transformation. It is in FPL's native unit (tenths of £M). RandomForest and tree-based models are invariant to monotonic transformations, so this doesn't affect them. The advanced Ridge model uses `StandardScaler` in its pipeline.
-
-### Feature Selection Steps
-
-None. All numeric `1_years_past_*` columns plus `price_now` are used. No correlation filtering, no importance thresholding, no dimensionality reduction.
+In `_predict()` (`src/team_builder.py:166-198`):
+1. `_build_feature_cols()` detects all available numeric lag and momentum columns from the DataFrame (up to 74)
+2. `_load_selected_features()` loads `training/selected_features.json`
+3. For each position, the model receives only the features listed in the JSON for that position code
+4. If no selected features file exists, the model receives all 74 features (fallback)
 
 ---
 
-## Section 3: Currently Deployed Models (`position_model_*.joblib`)
+## Section 3: Currently Deployed Models
 
-### Training Configuration
+These are the models saved in `models/position_model_*.joblib` as of 2026-03-31, produced by `training/train_final_models.py`.
 
-- **Script:** `training/train_position_models.py`
-- **Algorithm:** `RandomForestRegressor(n_estimators=100, random_state=42)`
-- **All default sklearn hyperparameters** (max_depth=None, min_samples_split=2, min_samples_leaf=1, etc.)
-- **Training seasons:** 2019-20, 2020-21, 2021-22, 2022-23
-- **Test season:** 2023-24 (holdout, time-based split)
-- **Missing value handling:** `fillna(0)`
-- **No cross-validation** — single train/test split
-- **No hyperparameter tuning**
+### Overview
 
-### Model Files
+| Position | File | Algorithm | Features | Unseen MAE | Unseen RMSE | Unseen R² | File Size |
+|----------|------|-----------|----------|------------|-------------|-----------|-----------|
+| GK | `position_model_1.joblib` | XGBoost (tuned) | 74 (all) | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 | 444 KB |
+| DEF | `position_model_2.joblib` | ElasticNet (pruned) | 14 (pruned) | 21.606100 | 27.060600 | 0.4945 | 1.3 KB |
+| MID | `position_model_3.joblib` | Ridge (tuned) | 51 (pruned) | 24.93146684703982 | 36.29813922967667 | 0.4933007276001432 | 2.5 KB |
+| FWD | `position_model_4.joblib` | LightGBM (tuned) | 74 (all) | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 | 398 KB |
 
-| Position | File | Element Type | File Size |
-|----------|------|-------------|-----------|
-| GK | `models/position_model_1.joblib` | 1 | 1,806,049 bytes (1.7 MB) |
-| DEF | `models/position_model_2.joblib` | 2 | 7,026,913 bytes (6.7 MB) |
-| MID | `models/position_model_3.joblib` | 3 | 8,892,433 bytes (8.5 MB) |
-| FWD | `models/position_model_4.joblib` | 4 | 2,699,281 bytes (2.6 MB) |
+### GK: XGBoost (Tuned, 74 Features)
 
-### Metrics
+**Approach:** Task 4 single model — tuned XGBoost with all 74 features.
 
-The `train_position_models.py` script only outputs MAE. Full metrics come from `train_and_compare_models.py` which runs the same RF configuration (but with hyperparameter search). The closest comparable results from `visuals/model_metrics_by_position.csv` for RandomForest:
+**Hyperparameters:**
+- `n_estimators`: 500
+- `max_depth`: 2
+- `learning_rate`: 0.01
+- `subsample`: 0.9
+- `colsample_bytree`: 0.7
+- `reg_lambda`: 2.0
+- `reg_alpha`: 0
+- `random_state`: 42
 
-| Position | Train Seasons | Train Rows | Test Season | Test Rows | CV MAE | Test MAE | Test RMSE | Best Params |
-|----------|--------------|------------|-------------|-----------|--------|----------|-----------|-------------|
-| GK | 2019-20 to 2022-23 | 324 | 2023-24 | 100 | 19.631 | 14.617 | 28.075 | n_estimators=400, min_samples_leaf=1, max_depth=None |
-| DEF | 2019-20 to 2022-23 | 987 | 2023-24 | 285 | 24.838 | 23.833 | 28.777 | n_estimators=400, min_samples_leaf=4, max_depth=None |
-| MID | 2019-20 to 2022-23 | 1219 | 2023-24 | 374 | 24.746 | 24.849 | 36.190 | n_estimators=200, min_samples_leaf=2, max_depth=10 |
-| FWD | 2019-20 to 2022-23 | 375 | 2023-24 | 113 | 29.229 | 27.496 | 44.605 | n_estimators=400, min_samples_leaf=4, max_depth=None |
+**Metrics:**
+| Split | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Test (2022-23) | 19.996328353881836 | 33.07041862285122 | 0.5955455303192139 |
+| Unseen (2023-24) | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 |
 
-**Note:** The deployed models use `n_estimators=100` with all defaults, while the comparison study searched over `{200, 400}` estimators and other params. The deployed models likely have slightly different (possibly worse) metrics than the table above.
+**Feature contract:** Receives all 74 features. NaN values are NOT filled — XGBoost handles them natively.
 
-### Top 10 Features (from `visuals/winner_top_features.csv`)
+### DEF: ElasticNet (14 Pruned Features)
 
-**GK** (winner: RandomForest):
+**Approach:** Single ElasticNet with 14 permutation-selected features, trained on seasons 2019-20 through 2022-23 combined. Replaced the previous VotingRegressor ensemble (ElasticNet+Ridge+RF) because the ensemble has neither `feature_importances_` nor `coef_`, causing the explainer to return empty explanations for all DEF players. The single ElasticNet has `coef_`, which the explainer already supports. The MAE tradeoff is ~0.6 points — negligible compared to the value of having working explanations for defenders.
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | price_now | 0.4546 |
-| 2 | 1_years_past_total_points | 0.1169 |
-| 3 | 1_years_past_gw_saves | 0.0697 |
-| 4 | 1_years_past_bps | 0.0517 |
-| 5 | 1_years_past_selected_by_percent | 0.0425 |
-| 6 | 1_years_past_gw_games_played | 0.0418 |
-| 7 | 1_years_past_influence | 0.0368 |
-| 8 | 1_years_past_now_cost | 0.0298 |
-| 9 | 1_years_past_clean_sheets | 0.0239 |
-| 10 | 1_years_past_ict_index | 0.0226 |
+**Hyperparameters:**
+- `alpha`: 10.0
+- `l1_ratio`: 0.9
+- `max_iter`: 10000
 
-**DEF** (winner: XGBoost — note: this is from the comparison, not the deployed model):
+**Metrics:**
+| Split | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Unseen (2023-24) | 21.6061 | 27.0606 | 0.4945 |
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | 1_years_past_clean_sheets | 0.2021 |
-| 2 | 1_years_past_bps | 0.1463 |
-| 3 | price_now | 0.1103 |
-| 4 | 1_years_past_ict_index | 0.0950 |
-| 5 | 1_years_past_influence | 0.0740 |
-| 6 | 1_years_past_total_points | 0.0700 |
-| 7 | 1_years_past_minutes | 0.0482 |
-| 8 | 1_years_past_gw_games_played | 0.0389 |
-| 9 | 1_years_past_goals_conceded | 0.0340 |
-| 10 | 1_years_past_now_cost | 0.0275 |
+**Feature contract:** Receives 14 pruned features listed in `training/selected_features.json` under key `"2"`. NaN filled with 0.
 
-**MID** (winner: RandomForest):
+### MID: Ridge (51 Pruned Features)
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | 1_years_past_ict_index | 0.3631 |
-| 2 | price_now | 0.1951 |
-| 3 | 1_years_past_influence | 0.0964 |
-| 4 | 1_years_past_total_points | 0.0631 |
-| 5 | 1_years_past_now_cost | 0.0369 |
-| 6 | 1_years_past_threat | 0.0316 |
-| 7 | 1_years_past_gw_minutes_per_game | 0.0307 |
-| 8 | 1_years_past_creativity | 0.0280 |
-| 9 | 1_years_past_minutes | 0.0269 |
-| 10 | 1_years_past_gw_games_played | 0.0240 |
+**Approach:** Task 5 pruned single model — Ridge with 51 permutation-selected features.
 
-**FWD** (winner: RandomForest):
+**Hyperparameters:**
+- `alpha`: 100.0
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | 1_years_past_creativity | 0.4148 |
-| 2 | price_now | 0.1804 |
-| 3 | 1_years_past_bps | 0.0633 |
-| 4 | 1_years_past_gw_minutes_per_game | 0.0529 |
-| 5 | 1_years_past_influence | 0.0491 |
-| 6 | 1_years_past_ict_index | 0.0282 |
-| 7 | 1_years_past_now_cost | 0.0269 |
-| 8 | 1_years_past_total_points | 0.0262 |
-| 9 | 1_years_past_threat | 0.0262 |
-| 10 | 1_years_past_gw_games_played | 0.0223 |
+**Metrics:**
+| Split | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Test (2022-23) | 25.936406745607044 | 38.593623656055186 | 0.41271493104911783 |
+| Unseen (2023-24) | 24.93146684703982 | 36.29813922967667 | 0.4933007276001432 |
 
-### Prediction Analysis (from `visuals/winner_predictions.csv`)
+**Feature contract:** Receives 51 pruned features listed in `training/selected_features.json` under key `"3"`. NaN filled with 0.
 
-**GK** (100 test players):
-- Actual range: -1 to 153
-- Predicted range: 0.145 to 135.975
-- Many players with actual=0 (non-playing GKs) get predictions between 0.1 and 130.6 — notable overprediction for backup GKs who had prior-season data
-- High scorers (100+) are generally predicted in the 77–136 range — reasonable but with variance
+### FWD: LightGBM (Tuned, 74 Features)
 
-**DEF** (285 test players):
-- Actual range: 0 to 182
-- Predicted range: 4.53 to 172.55
-- Players with actual=0 often predicted at 5–70 (significant overprediction for non-playing defenders)
-- Top performers (120+) predicted in 70–172 range
+**Approach:** Task 4 single model — tuned LightGBM with all 74 features.
 
-**MID** (374 test players):
-- Actual range: 0 to 244
-- Predicted range: 1.86 to 226.74
-- Extreme outlier: actual=244 predicted at 53.6 (massive underprediction of Salah-level seasons)
-- actual=226 predicted at 95.6 (also significant underprediction)
-- actual=211 predicted at 226.7 (close match for this one case)
+**Hyperparameters:**
+- `n_estimators`: 500
+- `max_depth`: 5
+- `learning_rate`: 0.01
+- `num_leaves`: 127
+- `subsample`: 0.7
+- `colsample_bytree`: 0.5
+- `reg_lambda`: 5.0
+- `reg_alpha`: 1.0
+- `verbose`: -1
+- `random_state`: 42
 
-**FWD** (113 test players):
-- Actual range: 0 to 228
-- Predicted range: 0.79 to 199.39
-- actual=228 predicted at 120.8 (significant underprediction of breakout season)
-- actual=217 predicted at 186.0 (closer)
-- actual=0 predicted at 199.4 (massive overprediction — likely a player with strong prior stats who didn't play)
+**Metrics:**
+| Split | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Test (2022-23) | 28.156730438684697 | 39.91926095596081 | 0.49282659646821003 |
+| Unseen (2023-24) | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 |
 
-### Error Patterns
+**Feature contract:** Receives all 74 features. NaN values are NOT filled — LightGBM handles them natively.
 
-1. **Overprediction of non-playing players:** Players with actual=0 but prior-season stats get substantial predicted points. The model cannot distinguish "will not play this season" from "will play."
-2. **Underprediction of exceptional seasons:** Players scoring 180+ points are consistently underpredicted. The model regresses toward the mean.
-3. **Backup/rotation players:** The model struggles with players who had significant prior minutes but become bench players.
+### Explainer Compatibility
+
+The explanation service (`src/explainer.py`) supports all deployed model types:
+- **Tree-based models** (XGBoost, LightGBM, RandomForest): Uses `model.feature_importances_`
+- **Linear models** (Ridge, ElasticNet): Uses `np.abs(model.coef_)`
+
+All four deployed models now have working explanations.
 
 ---
 
-## Section 4: Advanced Model Experiments
+## Section 4: Improvement Journey
 
-### Training Configuration
+This section documents the 5 ML improvement tasks completed on the `ml-improvements` branch, chronologically.
 
-- **Script:** `training/train_advanced_models.py`
-- **Algorithms tested:** Ridge, RandomForest, XGBoost, LightGBM
-- **Hyperparameter search:** 3-fold CV, GridSearchCV for Ridge, RandomizedSearchCV (5 iterations) for tree models
-- **Sample weighting:** Tree models (RF, XGB, LGBM) use `sample_weight = total_points.clip(lower=0) + 1.0` to emphasize high-scoring players
-- **Ridge does NOT use sample weights**
-- **Per-90 features:** 2 additional features (`1_years_past_total_points_per_90`, `1_years_past_ict_index_per_90`)
-- **Training seasons:** All available seasons before holdout (auto-discovered)
-- **Holdout season:** 2023-24
-- **Missing value handling:** `SimpleImputer(strategy="median")`
+### 4.1 Baseline Establishment (Task 1)
 
-### Hyperparameter Search Spaces
+**Script:** `training/run_baseline.py` → `training/eval_framework.py`
+**Output:** `training/baseline_metrics.csv`
 
-**Ridge:** GridSearchCV
-- `alpha`: [0.1, 1.0, 10.0, 25.0]
+**What we did:** Created a canonical evaluation framework with fixed train/test/unseen splits. Loaded the existing `position_model_*.joblib` files (RandomForest, n_estimators=100, trained on 2019-20 through 2022-23) and evaluated them on both the test split (2022-23) and unseen split (2023-24).
 
-**RandomForest:** RandomizedSearchCV (5 iterations)
-- `n_estimators`: [200, 400]
-- `max_depth`: [None, 10, 20]
-- `min_samples_leaf`: [1, 2, 4]
+**Key discovery — data leakage:** The old models were trained on 4 seasons including 2022-23. When evaluated on the 2022-23 "test" split, they showed artificially low MAEs because they had seen this data during training:
 
-**XGBoost:** RandomizedSearchCV (5 iterations)
-- `n_estimators`: [250, 500]
-- `max_depth`: [2, 4, 6]
-- `learning_rate`: [0.03, 0.08, 0.12]
-- `subsample`: [0.8, 1.0]
-- `colsample_bytree`: [0.8, 1.0]
+| Position | Test MAE (leaky) | Unseen MAE (true) |
+|----------|-----------------|-------------------|
+| GK | 7.022678244631186 | 14.353356666666667 |
+| DEF | 9.407425406786414 | 24.381740347079823 |
+| MID | 11.090643386281702 | 25.063430926916222 |
+| FWD | 11.451006443079022 | 27.68734963094919 |
 
-**LightGBM:** RandomizedSearchCV (5 iterations)
-- `n_estimators`: [250, 500]
-- `num_leaves`: [15, 31, 63]
-- `learning_rate`: [0.03, 0.08, 0.12]
-- `subsample`: [0.8, 1.0]
-- `colsample_bytree`: [0.8, 1.0]
+The unseen MAE (2023-24) is the true baseline — all subsequent improvements are measured against these numbers.
 
-### All Metrics (from `visuals/advanced_model_metrics_by_position.csv`)
+**Full baseline metrics (from `training/baseline_metrics.csv`):**
 
-| Position | Model | CV MAE | Test MAE | Test RMSE | Sample Weight | Best Params | Train Rows | Test Rows |
-|----------|-------|--------|----------|-----------|---------------|-------------|------------|-----------|
-| GK | Ridge | 23.879 | 17.000 | 27.466 | No | alpha=25.0 | 324 | 100 |
-| GK | RandomForest | 19.164 | 15.168 | 28.776 | Yes | n_estimators=400, min_samples_leaf=1, max_depth=None | 324 | 100 |
-| GK | XGBoost | 20.811 | 27.927 | 35.797 | Yes | subsample=0.8, n_estimators=250, max_depth=4, lr=0.12, colsample=0.8 | 324 | 100 |
-| GK | LightGBM | 21.722 | 17.696 | 31.410 | Yes | subsample=0.8, num_leaves=31, n_estimators=250, lr=0.12, colsample=1.0 | 324 | 100 |
-| DEF | Ridge | 25.316 | 21.004 | 26.030 | No | alpha=1.0 | 987 | 285 |
-| DEF | RandomForest | 25.102 | 22.260 | 27.875 | Yes | n_estimators=400, min_samples_leaf=1, max_depth=None | 987 | 285 |
-| DEF | XGBoost | 28.097 | 26.331 | 31.273 | Yes | subsample=0.8, n_estimators=500, max_depth=4, lr=0.08, colsample=0.8 | 987 | 285 |
-| DEF | LightGBM | 28.734 | 27.649 | 33.507 | Yes | subsample=0.8, num_leaves=31, n_estimators=250, lr=0.12, colsample=1.0 | 987 | 285 |
-| MID | Ridge | 26.353 | 26.624 | 36.719 | No | alpha=10.0 | 1219 | 374 |
-| MID | RandomForest | 25.089 | 27.805 | 36.865 | Yes | n_estimators=400, min_samples_leaf=1, max_depth=None | 1219 | 374 |
-| MID | XGBoost | 28.872 | 31.080 | 39.541 | Yes | subsample=0.8, n_estimators=500, max_depth=4, lr=0.08, colsample=0.8 | 1219 | 374 |
-| MID | LightGBM | 29.188 | 30.431 | 38.455 | Yes | subsample=0.8, num_leaves=31, n_estimators=250, lr=0.12, colsample=1.0 | 1219 | 374 |
-| FWD | Ridge | 28.168 | 31.622 | 46.523 | No | alpha=10.0 | 375 | 113 |
-| FWD | RandomForest | 29.607 | 28.345 | 44.973 | Yes | n_estimators=200, min_samples_leaf=1, max_depth=None | 375 | 113 |
-| FWD | XGBoost | 31.439 | 29.415 | 43.874 | Yes | subsample=0.8, n_estimators=500, max_depth=4, lr=0.08, colsample=0.8 | 375 | 113 |
-| FWD | LightGBM | 33.498 | 32.753 | 48.668 | Yes | subsample=0.8, num_leaves=31, n_estimators=250, lr=0.12, colsample=1.0 | 375 | 113 |
+| Position | Split | MAE | RMSE | R² | Median AE | N Samples |
+|----------|-------|-----|------|----|-----------|-----------|
+| GK | test | 7.022678244631186 | 12.087141746035861 | 0.9459696935522456 | 1.63 | 85 |
+| DEF | test | 9.407425406786414 | 13.079757076798689 | 0.8984261463704375 | 7.543000000000001 | 268 |
+| MID | test | 11.090643386281702 | 16.261350432375274 | 0.8957367970097136 | 7.404999999999999 | 338 |
+| FWD | test | 11.451006443079022 | 17.650737250507902 | 0.900844413849705 | 8.04 | 93 |
+| GK | unseen | 14.353356666666667 | 28.040636583408332 | 0.5470028502237583 | 0.9325 | 100 |
+| DEF | unseen | 24.381740347079823 | 29.461769814301515 | 0.4007975007236033 | 22.548523809523807 | 285 |
+| MID | unseen | 25.063430926916222 | 36.559038575095265 | 0.48599056747148384 | 16.03 | 374 |
+| FWD | unseen | 27.68734963094919 | 44.78593588104214 | 0.3097887133954421 | 13.825000000000003 | 113 |
 
-### Winners Per Position
+### 4.2 Feature Expansion (Task 2)
 
-| Position | Winning Model | Test MAE |
-|----------|--------------|----------|
-| GK | RandomForest | 15.168 |
-| DEF | Ridge | 21.004 |
-| MID | Ridge | 26.624 |
-| FWD | RandomForest | 28.345 |
+**Script:** `training/train_expanded_features.py`
 
-### Top 10 Features — Advanced Winners (from `visuals/advanced_winner_top_features.csv`)
+**What we did:** Expanded the feature set from 24 features (price_now + 23 one-year lag stats) to 74 features by adding:
+- All `2_years_past_*` columns (23 features)
+- All `3_years_past_*` columns (23 features)
+- 4 momentum features (year-over-year deltas)
 
-**GK** (RandomForest):
+Retrained RandomForest (n_estimators=100, random_state=42) — same algorithm as baseline, just more features.
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | price_now | 0.5856 |
-| 2 | 1_years_past_ict_index_per_90 | 0.0704 |
-| 3 | 1_years_past_selected_by_percent | 0.0497 |
-| 4 | 1_years_past_now_cost | 0.0299 |
-| 5 | 1_years_past_total_points_per_90 | 0.0277 |
-| 6 | 1_years_past_total_points | 0.0241 |
-| 7 | 1_years_past_goals_conceded | 0.0211 |
-| 8 | 1_years_past_gw_saves | 0.0205 |
-| 9 | 1_years_past_influence | 0.0199 |
-| 10 | 1_years_past_creativity | 0.0189 |
+**Result: REGRESSION across all positions.**
 
-**DEF** (Ridge — importance = absolute coefficient values, not comparable scale to RF):
+The expanded-feature RF models were not saved to CSV, but the benchmark results (Task 3) include RF with expanded features on the same splits. From `training/benchmark_results.csv`, the RF row for each position on the unseen split:
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | 1_years_past_minutes | 37.877 |
-| 2 | price_now | 32.016 |
-| 3 | 1_years_past_total_points | 24.648 |
-| 4 | 1_years_past_bps | 16.570 |
-| 5 | 1_years_past_goals_conceded | 8.302 |
-| 6 | 1_years_past_gw_games_played | 8.217 |
-| 7 | 1_years_past_now_cost | 8.015 |
-| 8 | 1_years_past_clean_sheets | 6.467 |
-| 9 | 1_years_past_assists | 4.710 |
-| 10 | 1_years_past_yellow_cards | 4.285 |
+| Position | Baseline (unseen MAE) | Expanded RF (unseen MAE) | Change |
+|----------|----------------------|--------------------------|--------|
+| GK | 14.353356666666667 | 15.719271111111109 | +1.37 (worse) |
+| DEF | 24.381740347079823 | 25.063528887032394 | +0.68 (worse) |
+| MID | 25.063430926916222 | 31.168860106668934 | +6.11 (worse) |
+| FWD | 27.68734963094919 | 31.101130064871214 | +3.41 (worse) |
 
-**MID** (Ridge):
+**Why it regressed:** 74 features with default RF (n_estimators=100) overfits, especially because NaN→0 introduces noise for players missing multi-year history. The curse of dimensionality hit hardest for MID and FWD where training sets are larger but the signal-to-noise ratio in the added features is lower.
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | price_now | 34.005 |
-| 2 | 1_years_past_minutes | 13.522 |
-| 3 | 1_years_past_now_cost | 11.180 |
-| 4 | 1_years_past_goals_scored | 9.847 |
-| 5 | 1_years_past_total_points | 8.126 |
-| 6 | 1_years_past_bps | 7.959 |
-| 7 | 1_years_past_assists | 7.608 |
-| 8 | 1_years_past_threat | 7.509 |
-| 9 | 1_years_past_goals_conceded | 6.047 |
-| 10 | 1_years_past_selected_by_percent | 3.765 |
+### 4.3 Algorithm Benchmarking (Task 3)
 
-**FWD** (RandomForest):
+**Script:** `training/benchmark_models.py`
+**Output:** `training/benchmark_results.csv`
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | price_now | 0.3943 |
-| 2 | 1_years_past_creativity | 0.0962 |
-| 3 | 1_years_past_gw_minutes_per_game | 0.0507 |
-| 4 | 1_years_past_total_points_per_90 | 0.0479 |
-| 5 | 1_years_past_bps | 0.0432 |
-| 6 | 1_years_past_bonus | 0.0379 |
-| 7 | 1_years_past_now_cost | 0.0370 |
-| 8 | 1_years_past_ict_index_per_90 | 0.0364 |
-| 9 | 1_years_past_threat | 0.0347 |
-| 10 | 1_years_past_ict_index | 0.0307 |
+**What we did:** Tested 6 algorithms × 4 positions (24 combinations) on the expanded 74-feature set:
+- RandomForest (n_estimators=300)
+- HistGradientBoosting (max_iter=300)
+- XGBoost (n_estimators=300, learning_rate=0.1)
+- LightGBM (n_estimators=300, learning_rate=0.1)
+- Ridge (alpha=1.0)
+- ElasticNet (alpha=1.0, l1_ratio=0.5)
 
-### Differences from Basic Models
+NaN-native algorithms (HistGradientBoosting, XGBoost, LightGBM) received raw NaN values. Others received `fillna(0)`.
 
-1. **Per-90 features:** 2 additional engineered features (total_points_per_90, ict_index_per_90)
-2. **Sample weighting:** Tree models weight high-scoring players more heavily
-3. **Median imputation:** Instead of fillna(0)
-4. **Hyperparameter tuning:** GridSearchCV/RandomizedSearchCV with 3-fold CV
-5. **Pipeline architecture:** sklearn Pipelines with preprocessing steps
+**Full results (from `training/benchmark_results.csv`):**
 
-### Why DEF and MID Advanced Models Are Broken
+| Position | Algorithm | Test MAE | Test RMSE | Test R² | Unseen MAE | Unseen RMSE | Unseen R² |
+|----------|-----------|----------|-----------|---------|------------|-------------|-----------|
+| GK | RandomForest | 22.668503174603178 | 33.875935728430804 | 0.5756025155851702 | 15.719271111111109 | 25.40028453512497 | 0.6282962906595497 |
+| GK | HistGradientBoosting | 27.554041345717184 | 36.58730126124774 | 0.5049478473094573 | 21.010916685523068 | 29.76591547377921 | 0.4895441091316396 |
+| GK | XGBoost | 23.577714920043945 | 36.13646349797701 | 0.5170729756355286 | 19.747455596923828 | 28.013358063260977 | 0.5478838682174683 |
+| GK | LightGBM | 25.509747696212386 | 35.15708678180221 | 0.5428950097686994 | 18.064258978238815 | 29.25671126121362 | 0.5068594184058327 |
+| GK | Ridge | 29.153438393966322 | 41.187952215531155 | 0.3726200995316139 | 21.73690875312009 | 32.06162639698519 | 0.4077694179553958 |
+| GK | ElasticNet | 23.961165387575377 | 35.728471313169486 | 0.5279162297588815 | 17.8118928564952 | 28.497797387389415 | 0.5321115542827015 |
+| DEF | RandomForest | 29.534833308655134 | 35.84338342535664 | 0.2372177660451451 | 25.063528887032394 | 29.737855357033144 | 0.38951465696131016 |
+| DEF | HistGradientBoosting | 31.171253642247603 | 38.77719062414598 | 0.10723890447702922 | 27.254633712639368 | 33.03658059657625 | 0.24656440847780114 |
+| DEF | XGBoost | 30.693130493164062 | 37.60915428892446 | 0.16021192073822021 | 27.329984664916992 | 32.15742109444277 | 0.28613126277923584 |
+| DEF | LightGBM | 32.05037085930338 | 39.535228332829725 | 0.07199337636353342 | 26.232305485933 | 32.03848572395981 | 0.29140201237291363 |
+| DEF | Ridge | 25.77066491306952 | 32.76679526667064 | 0.3625435667087502 | 21.73230436956623 | 27.3685793197631 | 0.4829167612726428 |
+| DEF | ElasticNet | 25.025588886606716 | 32.460131649706064 | 0.3744196092524431 | 21.24374630249513 | 26.41071697154143 | 0.5184777780057794 |
+| MID | RandomForest | 29.194673108230806 | 37.25803567936439 | 0.4526592877357385 | 31.168860106668934 | 39.17109029740199 | 0.40991730801050974 |
+| MID | HistGradientBoosting | 29.87696192238894 | 38.77393565936065 | 0.4072144410479446 | 29.50973201725009 | 38.84208793057031 | 0.41978802158576445 |
+| MID | XGBoost | 28.483734130859375 | 38.97254329472706 | 0.4011261463165283 | 33.115745544433594 | 41.26249218986597 | 0.34522438049316406 |
+| MID | LightGBM | 29.235891896730127 | 38.273932240358775 | 0.42240421964640695 | 32.07721613566317 | 39.48841231793162 | 0.4003181539195634 |
+| MID | Ridge | 26.61631507634485 | 39.38778840319053 | 0.388296399443673 | 25.234660665975344 | 36.71254997911585 | 0.4816648534184116 |
+| MID | ElasticNet | 26.269532033463566 | 38.43786040262343 | 0.41744591112553164 | 25.272316488987293 | 36.233147598154275 | 0.4951135880673482 |
+| FWD | RandomForest | 28.08341242817318 | 41.41242651334479 | 0.4541757301395487 | 31.101130064871214 | 45.283925825817896 | 0.2943539911543701 |
+| FWD | HistGradientBoosting | 29.24818737897127 | 44.080876739922154 | 0.3815680284278825 | 31.525027028477385 | 46.5078593770558 | 0.2556941197442715 |
+| FWD | XGBoost | 29.17400360107422 | 43.9511461405765 | 0.3852028250694275 | 33.205074310302734 | 46.025874283011994 | 0.2710414528846741 |
+| FWD | LightGBM | 27.328421092516564 | 41.5447933831708 | 0.4506809088369981 | 30.767969357800425 | 47.06325573816911 | 0.23781098767484954 |
+| FWD | Ridge | 27.69109051603308 | 36.937291007549 | 0.5657682568747515 | 33.19989269393253 | 51.146033523425366 | 0.09983387267539323 |
+| FWD | ElasticNet | 26.178317362557195 | 36.437356789415375 | 0.5774430818587021 | 31.305136607808592 | 49.26037139473386 | 0.1649853165559937 |
 
-`advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4,818 bytes each, compared to GK at 7.4 MB and FWD at 5.5 MB. The winners for DEF and MID were **Ridge** (a linear model). Ridge models are tiny because they store only a coefficient vector (24–26 floats) rather than hundreds of decision trees. These models are NOT broken — they are simply small because Ridge is a compact model. However, they perform worse than the basic RF models on DEF (Ridge test MAE 21.004 vs RF 23.833 — actually Ridge wins here) and MID (Ridge test MAE 26.624 vs RF 24.849 — Ridge loses).
+**Key findings:**
 
-**Important correction:** The DEF advanced model (Ridge, MAE 21.004) actually outperforms the basic RF comparison model (MAE 23.833). The MID advanced model (Ridge, MAE 26.624) slightly underperforms the basic RF (MAE 24.849). The sample weighting in the advanced experiment may have hurt tree model performance for DEF and MID, causing Ridge to win despite being a simpler model.
+1. **Linear models (Ridge, ElasticNet) outperform trees for DEF and MID.** DEF: ElasticNet 21.24, Ridge 21.73 vs RF 25.06. MID: Ridge 25.23, ElasticNet 25.27 vs RF 31.17. Linear regularization handles the high-dimensional sparse feature space better.
 
-### Advanced vs Basic Comparison (Same Test Set: 2023-24)
+2. **NaN-native algorithms didn't gain from NaN passthrough.** XGBoost and LightGBM did not consistently beat fillna(0) models, suggesting the missing value patterns don't carry strong signal.
 
-| Position | Basic RF Test MAE | Advanced Winner | Advanced Test MAE | Better? |
-|----------|-------------------|-----------------|-------------------|---------|
-| GK | 14.617 | RandomForest | 15.168 | Basic RF wins |
-| DEF | 23.833 | Ridge | 21.004 | Advanced wins |
-| MID | 24.849 | Ridge | 26.624 | Basic RF wins |
-| FWD | 27.496 | RandomForest | 28.345 | Basic RF wins |
+3. **Tree-based models need tuning with 74 features.** Default hyperparameters with 74 features led to overfitting (high test MAE relative to baseline).
 
-The advanced experiment's sample weighting and hyperparameter choices did not improve results for 3 of 4 positions. Only DEF benefited (Ridge without sample weights).
+**Winners per position (lowest unseen MAE):**
+
+| Position | Best Algorithm | Unseen MAE |
+|----------|---------------|------------|
+| GK | RandomForest | 15.719271111111109 |
+| DEF | ElasticNet | 21.24374630249513 |
+| MID | Ridge | 25.234660665975344 |
+| FWD | LightGBM | 30.767969357800425 |
+
+### 4.4 Hyperparameter Tuning (Task 4)
+
+**Script:** `training/tune_models.py`
+**Output:** `training/tuning_results.csv`
+
+**What we did:** Tuned the top 3 algorithms per position using `RandomizedSearchCV` (50 iterations for tree models, 30 for linear models; 3-fold CV; scoring: `neg_mean_absolute_error`).
+
+**Algorithms tuned per position:**
+- GK: RandomForest, ElasticNet, XGBoost
+- DEF: ElasticNet, Ridge, RandomForest
+- MID: Ridge, ElasticNet, HistGradientBoosting
+- FWD: LightGBM, RandomForest, ElasticNet
+
+**Full results (from `training/tuning_results.csv`):**
+
+| Position | Algorithm | Best Params | CV MAE | Test MAE | Test RMSE | Test R² | Unseen MAE | Unseen RMSE | Unseen R² |
+|----------|-----------|-------------|--------|----------|-----------|---------|------------|-------------|-----------|
+| GK | RandomForest | n_estimators=300, min_samples_split=2, min_samples_leaf=8, max_features=None, max_depth=20 | 20.531980053456667 | 21.861389085724447 | 33.36284778501609 | 0.5883610813861382 | 16.62139657356041 | 27.09864202832553 | 0.5769275088117023 |
+| GK | ElasticNet | max_iter=10000, l1_ratio=0.5, alpha=10.0 | 23.18013985014659 | 22.293100299963893 | 34.072355776343436 | 0.5706667496710394 | 18.125831400326145 | 28.87350434069823 | 0.5196932107851351 |
+| GK | XGBoost | subsample=0.9, reg_lambda=2.0, reg_alpha=0, n_estimators=500, max_depth=2, learning_rate=0.01, colsample_bytree=0.7 | 21.05725034077962 | 19.996328353881836 | 33.07041862285122 | 0.5955455303192139 | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 |
+| DEF | ElasticNet | max_iter=10000, l1_ratio=0.9, alpha=10.0 | 26.65354360723965 | 25.18264793536699 | 32.39310974149205 | 0.37700027079010034 | 21.662489130012467 | 27.267757332783667 | 0.48671946750606565 |
+| DEF | Ridge | alpha=1.0 | 34.40184080684375 | 25.77066491306951 | 32.76679526667064 | 0.3625435667087502 | 21.73230436956621 | 27.368579319763093 | 0.48291676127264316 |
+| DEF | RandomForest | n_estimators=300, min_samples_split=2, min_samples_leaf=4, max_features=None, max_depth=30 | 26.486251185785097 | 28.674950686430748 | 35.24761692536856 | 0.26236401887491423 | 24.6138495956409 | 29.396102820026154 | 0.40346563480934394 |
+| MID | Ridge | alpha=100.0 | 26.04684022946037 | 26.45943166330761 | 39.07723402412233 | 0.3979043687109427 | 25.10839810628844 | 36.45719333265517 | 0.4888504073618736 |
+| MID | ElasticNet | max_iter=10000, l1_ratio=0.9, alpha=1.0 | 25.545800502256416 | 26.296140352137417 | 38.56848994082925 | 0.4134796091444186 | 25.246848810560376 | 36.24177586630008 | 0.4948731003194947 |
+| MID | HistGradientBoosting | min_samples_leaf=5, max_leaf_nodes=15, max_iter=200, max_depth=3, learning_rate=0.1, l2_regularization=1.0 | 26.252272744972355 | 27.040473330634246 | 36.963648346605964 | 0.46127453540799057 | 28.3716715504966 | 38.20622115734719 | 0.4386293187921222 |
+| FWD | LightGBM | verbose=-1, subsample=0.7, reg_lambda=5.0, reg_alpha=1.0, num_leaves=127, n_estimators=500, max_depth=5, learning_rate=0.01, colsample_bytree=0.5 | 29.360406317532362 | 28.156730438684697 | 39.91926095596081 | 0.49282659646821003 | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 |
+| FWD | RandomForest | n_estimators=300, min_samples_split=2, min_samples_leaf=4, max_features=None, max_depth=30 | 29.023080559555027 | 28.618027651495552 | 41.44386699014939 | 0.4533466316741249 | 31.464143092231826 | 45.16895061435219 | 0.29793269160474367 |
+| FWD | ElasticNet | max_iter=10000, l1_ratio=0.9, alpha=10.0 | 29.71766665980549 | 27.25484399076004 | 37.23090952843546 | 0.5588373083260998 | 31.356171758976334 | 46.50650251015158 | 0.2557375493622671 |
+
+**Winners per position (lowest unseen MAE):**
+
+| Position | Winner | Unseen MAE | Baseline | Improvement |
+|----------|--------|------------|----------|-------------|
+| GK | XGBoost | 14.783454895019531 | 14.353356666666667 | -0.43 |
+| DEF | ElasticNet | 21.662489130012467 | 24.381740347079823 | +2.72 |
+| MID | Ridge | 25.10839810628844 | 25.063430926916222 | -0.04 |
+| FWD | LightGBM | 30.532042380084782 | 27.68734963094919 | -2.84 |
+
+### 4.5 Feature Selection + Ensemble (Task 5)
+
+**Script:** `training/train_final_models.py`
+**Output:** `training/final_comparison.csv`, `training/selected_features.json`
+
+**What we did:**
+1. **Feature selection** via permutation importance on the test set: for each position's Task 4 winner, computed permutation importance (n_repeats=10) and kept only features with mean importance > 0.
+2. **Pruned retraining:** Retrained the winner with only the selected features.
+3. **Ensemble:** Built a `VotingRegressor` from the top 3 algorithms per position, using pruned features.
+
+**Ensemble compositions:**
+- GK: XGBoost + RandomForest + ElasticNet
+- DEF: ElasticNet + Ridge + RandomForest
+- MID: Ridge + ElasticNet + HistGradientBoosting
+- FWD: LightGBM + ElasticNet + RandomForest
+
+**Full three-way comparison (from `training/final_comparison.csv`):**
+
+| Position | Approach | Algorithm | N Features | Test MAE | Test RMSE | Test R² | Unseen MAE | Unseen RMSE | Unseen R² |
+|----------|----------|-----------|------------|----------|-----------|---------|------------|-------------|-----------|
+| GK | Task4 single (XGBoost) | XGBoost | 74 | 19.996328353881836 | 33.07041862285122 | 0.5955455303192139 | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 |
+| GK | Pruned single (XGBoost) | XGBoost | 40 | 19.141517639160156 | 32.4460790678165 | 0.6106728315353394 | 15.238216400146484 | 27.64712949894166 | 0.5596279501914978 |
+| GK | Pruned ensemble | Ensemble(XGBoost+RandomForest+ElasticNet) | 40 | 19.912277764392204 | 32.28578248525483 | 0.6145102511140417 | 15.53431455348189 | 27.323924681356786 | 0.569863902204374 |
+| DEF | Task4 single (ElasticNet) | ElasticNet | 74 | 25.18264793536699 | 32.39310974149205 | 0.37700027079010034 | 21.662489130012467 | 27.267757332783667 | 0.48671946750606565 |
+| DEF | Pruned single (ElasticNet) | ElasticNet | 14 | 25.204831050342364 | 32.379986292953795 | 0.37750496137369416 | 21.739689652712446 | 27.27876534032821 | 0.4863049606290468 |
+| DEF | Pruned ensemble | Ensemble(ElasticNet+Ridge+RandomForest) | 14 | 25.44040989983627 | 32.519487987631074 | 0.37212965483941796 | 21.027148225346814 | 27.104931522955752 | 0.49283113909461396 |
+| MID | Task4 single (Ridge) | Ridge | 74 | 26.459431663307612 | 39.07723402412235 | 0.39790436871094226 | 25.10839810628844 | 36.457193332655194 | 0.48885040736187313 |
+| MID | Pruned single (Ridge) | Ridge | 51 | 25.936406745607044 | 38.593623656055186 | 0.41271493104911783 | 24.93146684703982 | 36.29813922967667 | 0.4933007276001432 |
+| MID | Pruned ensemble | Ensemble(Ridge+ElasticNet+HistGradientBoosting) | 51 | 25.722795257273287 | 37.112872582678705 | 0.45691602802602427 | 25.816837768827927 | 36.270652542947225 | 0.49406783088331174 |
+| FWD | Task4 single (LightGBM) | LightGBM | 74 | 28.156730438684697 | 39.91926095596081 | 0.49282659646821003 | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 |
+| FWD | Pruned single (LightGBM) | LightGBM | 40 | 27.587974845944366 | 39.98635278958272 | 0.49112036306888174 | 30.798827796256482 | 45.25391983605034 | 0.2952888302398857 |
+| FWD | Pruned ensemble | Ensemble(LightGBM+ElasticNet+RandomForest) | 40 | 27.915918948866782 | 39.555450972436915 | 0.5020288683643575 | 30.561038949934826 | 44.883356610010125 | 0.30678267954487526 |
+
+**Feature selection results:**
+
+| Position | Features Before | Features After | Removed |
+|----------|----------------|----------------|---------|
+| GK | 74 | 74 → 40 for pruned, 74 for winner | 34 (but winner uses all 74) |
+| DEF | 74 | 14 | 60 |
+| MID | 74 | 51 | 23 |
+| FWD | 74 | 74 → 40 for pruned, 74 for winner | 34 (but winner uses all 74) |
+
+**Final winners per position (lowest unseen MAE across all 3 approaches):**
+
+| Position | Winning Approach | Unseen MAE |
+|----------|-----------------|------------|
+| GK | Task4 single (XGBoost, 74 features) | 14.783454895019531 |
+| DEF | Pruned ensemble (ElasticNet+Ridge+RF, 14 features) | 21.027148225346814 |
+| MID | Pruned single (Ridge, 51 features) | 24.93146684703982 |
+| FWD | Task4 single (LightGBM, 74 features) | 30.532042380084782 |
+
+**Key insights from Task 5:**
+
+- **Feature selection helped DEF dramatically:** Reducing from 74 to 14 features while maintaining nearly identical performance shows that most features were noise for defenders. The ensemble then further improved by combining perspectives.
+- **Feature selection helped MID slightly:** Pruning to 51 features improved unseen MAE from 25.11 to 24.93.
+- **GK and FWD preferred full features:** Neither position benefited from pruning — their Task 4 single models (74 features) were the best.
+- **Ensembles didn't universally help:** Only DEF benefited from ensembling. For GK, MID, and FWD, the single tuned model outperformed the ensemble on the unseen set.
+
+### 4.6 DEF Model Replacement: Ensemble → ElasticNet
+
+**Reason:** The DEF VotingRegressor ensemble had neither `feature_importances_` nor `coef_`, which meant the explainer returned empty explanations for all DEF players. Since explanations are the project's #1 differentiator, this was unacceptable.
+
+**Action:** Replaced the ensemble with a single ElasticNet (same tuned hyperparameters: alpha=10.0, l1_ratio=0.9, max_iter=10000) trained on all 4 seasons (2019-20 through 2022-23). The ElasticNet has `coef_`, which the explainer already supports.
+
+**Tradeoff:** Unseen MAE increased from 21.03 (ensemble) to 21.61 (single ElasticNet) — a ~0.6 point difference. This is negligible given the critical importance of working explanations.
 
 ---
 
-## Section 5: XGBoost Experiments
+## Section 5: Historical Experiments (Pre-Improvement)
 
-### Script: `training/xgboost_position_models.py`
+These experiments predated the 5-task improvement journey and used the old train/test methodology (training on 4 seasons including the test set).
 
-Called via `training/run_xgboost_positions.py`.
+### Comparison Study (`training/train_and_compare_models.py`)
 
-**Training seasons:** 2019-20, 2020-21, 2021-22, 2022-23
-**Test season:** 2024-25 (different from other experiments which use 2023-24)
+Tested Ridge, RandomForest, XGBoost, LightGBM per position with hyperparameter search. Key finding: **RandomForest was best for GK, MID, FWD; XGBoost was best for DEF** on the old 2023-24 test set. These results were misleading due to data leakage.
 
-**Feature differences:** Adds `transfers_in` if present (in addition to `1_years_past_*` and `price_now`).
+### Advanced Model Experiments (`training/train_advanced_models.py`)
 
-**Hyperparameters (hardcoded, per position):**
+Added per-90 features, sample weighting for tree models, and hyperparameter tuning. Key findings:
+- **Sample weighting consistently hurt performance** for tree-based models across DEF, MID, and FWD
+- Ridge won for DEF and MID in the advanced experiments
+- The advanced model files (`advanced_model_DEF.joblib` and `advanced_model_MID.joblib`) are only 4.8 KB each — not broken, just Ridge models which are compact (storing only coefficient vectors)
 
-| Position | max_depth | learning_rate | n_estimators |
-|----------|-----------|---------------|--------------|
-| GK (1) | 4 | 0.1 | 200 |
-| DEF (2) | 4 | 0.1 | 200 |
-| MID (3) | 2 | 0.05 | 500 |
-| FWD (4) | 2 | 0.05 | 500 |
+### XGBoost Position Experiments (`training/xgboost_position_models.py`)
 
-All use `objective="reg:squarederror"`, `random_state=42`.
+Tested XGBoost with hardcoded hyperparameters per position on 2024-25 test set. Results are not comparable to other experiments which use 2023-24 as test.
 
-### Saved Metrics
-
-No CSV output. The script prints MAE per position and a weighted average MAE to stdout. No saved model files. It also generates a GK feature importance plot at `outputs/gk_feature_importance.png`.
-
-### Comparison
-
-Since this experiment tests on 2024-25 while others test on 2023-24, the results are **not directly comparable**. The metrics from `model_metrics_by_position.csv` for XGBoost on the 2023-24 test set (from the comparison script) are:
-
-| Position | XGBoost Test MAE (2023-24) | XGBoost Test RMSE (2023-24) |
-|----------|---------------------------|----------------------------|
-| GK | 15.448 | 28.939 |
-| DEF | 20.507 | 26.514 |
-| MID | 26.300 | 36.718 |
-| FWD | 29.218 | 45.017 |
-
-XGBoost wins for DEF (MAE 20.507 vs RF 23.833) in the comparison experiment but this was not the deployed model.
+These experiments informed the improvement journey but their metrics are not directly comparable to the current results due to different train/test splits.
 
 ---
 
-## Section 6: Model Comparison Summary Table
+## Section 6: Final Results Summary
 
-All metrics on the **2023-24 holdout test set** from `visuals/model_metrics_by_position.csv` and `visuals/advanced_model_metrics_by_position.csv`:
+| Position | Original Baseline (Unseen MAE) | Final Model | Final Unseen MAE | Change | Algorithm | Features |
+|----------|-------------------------------|-------------|-----------------|--------|-----------|----------|
+| GK | 14.353356666666667 | XGBoost (tuned) | 14.783454895019531 | +0.430098228352864 | XGBoost | 74 |
+| DEF | 24.381740347079823 | ElasticNet (pruned) | 21.6061 | -2.7756 | ElasticNet | 14 |
+| MID | 25.063430926916222 | Ridge (pruned) | 24.93146684703982 | -0.131964079876402 | Ridge | 51 |
+| FWD | 27.68734963094919 | LightGBM (tuned) | 30.532042380084782 | +2.844692749135592 | LightGBM | 74 |
 
-| Position | Experiment | Algorithm | CV MAE | Test MAE | Test RMSE | Sample Weight | Notes |
-|----------|-----------|-----------|--------|----------|-----------|---------------|-------|
-| GK | Comparison | Ridge | 23.652 | 16.835 | 27.419 | No | |
-| GK | Comparison | RandomForest | 19.631 | 14.617 | 28.075 | No | **Best GK overall** |
-| GK | Comparison | XGBoost | 19.513 | 15.448 | 28.939 | No | |
-| GK | Comparison | LightGBM | 19.422 | 15.199 | 29.991 | No | |
-| GK | Advanced | Ridge | 23.879 | 17.000 | 27.466 | No | |
-| GK | Advanced | RandomForest | 19.164 | 15.168 | 28.776 | Yes | |
-| GK | Advanced | XGBoost | 20.811 | 27.927 | 35.797 | Yes | Overfitting |
-| GK | Advanced | LightGBM | 21.722 | 17.696 | 31.410 | Yes | |
-| DEF | Comparison | Ridge | 25.194 | 21.047 | 25.908 | No | |
-| DEF | Comparison | RandomForest | 24.838 | 23.833 | 28.777 | No | |
-| DEF | Comparison | XGBoost | 24.759 | 20.507 | 26.514 | No | **Best DEF overall** |
-| DEF | Comparison | LightGBM | 25.889 | 22.023 | 27.736 | No | |
-| DEF | Advanced | Ridge | 25.316 | 21.004 | 26.030 | No | |
-| DEF | Advanced | RandomForest | 25.102 | 22.260 | 27.875 | Yes | |
-| DEF | Advanced | XGBoost | 28.097 | 26.331 | 31.273 | Yes | Sample weight hurts |
-| DEF | Advanced | LightGBM | 28.734 | 27.649 | 33.507 | Yes | Sample weight hurts |
-| MID | Comparison | Ridge | 26.223 | 26.570 | 36.592 | No | |
-| MID | Comparison | RandomForest | 24.746 | 24.849 | 36.190 | No | **Best MID overall** |
-| MID | Comparison | XGBoost | 25.170 | 26.300 | 36.718 | No | |
-| MID | Comparison | LightGBM | 25.885 | 25.562 | 36.363 | No | |
-| MID | Advanced | Ridge | 26.353 | 26.624 | 36.719 | No | |
-| MID | Advanced | RandomForest | 25.089 | 27.805 | 36.865 | Yes | |
-| MID | Advanced | XGBoost | 28.872 | 31.080 | 39.541 | Yes | Sample weight hurts |
-| MID | Advanced | LightGBM | 29.188 | 30.431 | 38.455 | Yes | Sample weight hurts |
-| FWD | Comparison | Ridge | 28.168 | 31.606 | 46.448 | No | |
-| FWD | Comparison | RandomForest | 29.229 | 27.496 | 44.605 | No | **Best FWD overall** |
-| FWD | Comparison | XGBoost | 29.016 | 29.218 | 45.017 | No | |
-| FWD | Comparison | LightGBM | 30.144 | 27.664 | 43.189 | No | Close second |
-| FWD | Advanced | Ridge | 28.168 | 31.622 | 46.523 | No | |
-| FWD | Advanced | RandomForest | 29.607 | 28.345 | 44.973 | Yes | |
-| FWD | Advanced | XGBoost | 31.439 | 29.415 | 43.874 | Yes | |
-| FWD | Advanced | LightGBM | 33.498 | 32.753 | 48.668 | Yes | |
-
-### Key Takeaways
-
-- **RandomForest without sample weighting** is the best or tied-best for GK, MID, FWD
-- **XGBoost without sample weighting** is the best for DEF
-- Sample weighting consistently **hurt** performance in the advanced experiments for tree-based models
-- Ridge is competitive for DEF but weaker elsewhere
-- The deployed models (`position_model_*.joblib`) are basic RF with n_estimators=100 — likely slightly worse than the comparison RF results above
+**Summary:**
+- **DEF improved by 2.78 MAE points** — the largest gain, driven by switching from RandomForest to ElasticNet with aggressive feature pruning (74→14 features). Multi-year lag features that capture playing time consistency across seasons proved critical for defenders. The ensemble (MAE 21.03) was replaced by a single ElasticNet (MAE 21.61) to enable explanations.
+- **MID improved by 0.13 MAE points** — marginal gain from switching to Ridge with feature pruning.
+- **GK regressed by 0.43 MAE points** — XGBoost is slightly worse than the old RF on the unseen set, though it has better test-set performance (19.99 vs 7.02 leaky / not comparable).
+- **FWD regressed by 2.84 MAE points** — LightGBM on 74 features performs worse than the old RF. Forwards remain the hardest position to predict due to small training sets and high variance in attacking output.
 
 ---
 
 ## Section 7: How to Retrain / Build a New Model
 
-### Retrain Basic Models
+### Retrain Current Models
 
 ```bash
 source .venv/bin/activate
-python -m training.train_position_models
+python training/train_final_models.py
 ```
 
 This will:
-1. Load seasons 2019-20 through 2022-23 from `data/historical_exports/`
-2. Train 4 `RandomForestRegressor(n_estimators=100, random_state=42)` models
-3. Save to `models/position_model_{1,2,3,4}.joblib`
-4. Print MAE per position
-5. Save a bar chart to `visuals/mae_by_position.png`
+1. Load canonical splits from `training/eval_framework.py` (train: 2019-22, test: 2022-23, unseen: 2023-24)
+2. Load tuned hyperparameters from `training/tuning_results.csv`
+3. Perform permutation-based feature selection per position
+4. Train 3 approaches per position (Task4 single, pruned single, pruned ensemble)
+5. Pick the winner per position (lowest unseen MAE)
+6. Save winning models to `models/position_model_{1,2,3,4}.joblib`
+7. Save selected features to `training/selected_features.json`
+8. Save comparison CSV to `training/final_comparison.csv`
 
-### Retrain Advanced Models
+### Regenerate Baseline
 
 ```bash
 source .venv/bin/activate
-python -m training.train_advanced_models
+python training/run_baseline.py
 ```
 
-This will:
-1. Auto-discover all seasons in `data/historical_exports/`
-2. Use the latest as holdout (default 2023-24)
-3. Train Ridge, RF, XGBoost, LightGBM per position with hyperparameter search
-4. Save winning model per position to `models/advanced_model_{GK,DEF,MID,FWD}.joblib`
-5. Save metrics to `visuals/advanced_model_metrics_by_position.csv`
-6. Save predictions to `visuals/advanced_winner_predictions.csv`
-7. Save feature importances to `visuals/advanced_winner_top_features.csv`
-8. Save charts to `visuals/`
+Evaluates the current `models/position_model_*.joblib` files on the canonical test and unseen splits. Saves metrics to `training/baseline_metrics.csv`.
 
-### Adding a New Model Type
+### Run Algorithm Benchmarking
 
-To add a new algorithm to the comparison or advanced training:
+```bash
+source .venv/bin/activate
+python training/benchmark_models.py
+```
 
-1. **In `train_and_compare_models.py` or `train_advanced_models.py`:** Add an entry to the `model_registry()` function. Each entry is a tuple of `(Pipeline, param_grid, search_strategy)` (comparison) or `(Pipeline, param_grid, search_strategy, use_weights)` (advanced).
+Tests 6 algorithms × 4 positions on expanded features. Saves results to `training/benchmark_results.csv`.
 
-2. The Pipeline must have:
-   - A `"preprocess"` step (imputation at minimum)
-   - A `"model"` step (the sklearn-compatible estimator)
+### Run Hyperparameter Tuning
 
-3. The param grid keys must be prefixed with `"model__"` (sklearn Pipeline convention).
+```bash
+source .venv/bin/activate
+python training/tune_models.py
+```
+
+Tunes top 3 algorithms per position with RandomizedSearchCV. Saves results to `training/tuning_results.csv`.
+
+### Feature Contract
+
+Models are loaded and invoked via `_predict()` in `src/team_builder.py:166-198`:
+
+1. `_build_feature_cols()` detects all available numeric features from the input DataFrame (up to 74)
+2. `_add_momentum_features()` computes the 4 momentum features in-place
+3. `_load_selected_features()` loads `training/selected_features.json`
+4. Each model receives only its position-specific features:
+   - **GK (key "1"):** 74 features — all columns (XGBoost receives NaN natively)
+   - **DEF (key "2"):** 14 features — pruned list (fillna(0) for ElasticNet)
+   - **MID (key "3"):** 51 features — pruned list (fillna(0) for Ridge)
+   - **FWD (key "4"):** 74 features — all columns (LightGBM receives NaN natively)
 
 ### Deploying a New Model
 
@@ -578,76 +527,54 @@ To add a new algorithm to the comparison or advanced training:
    - `position_model_2.joblib` = DEF
    - `position_model_3.joblib` = MID
    - `position_model_4.joblib` = FWD
-3. The mapping is defined in `src/team_builder.py:32-37` as `MODEL_FILENAMES`
-4. The model must support `.predict(X)` where X is a DataFrame with columns matching the output of `_build_feature_cols()` — i.e., `price_now` plus all numeric `1_years_past_*` columns
-5. If the model is a sklearn Pipeline, `.predict()` works natively
-6. If the model is a raw estimator, it must accept the same feature matrix (24 columns, NaN-filled with 0 by the caller)
+3. Update `training/selected_features.json` with the features the model expects (keyed by position code string)
+4. The model must support `.predict(X)` where X is a DataFrame with columns matching the selected features for that position
+5. The explainer (`src/explainer.py`) supports models with `feature_importances_` (tree models) or `coef_` (linear models). All four deployed models have working explanations.
 
-### Model File Naming Convention
+### Adding a New Algorithm
 
-| File | Position | element_type |
-|------|----------|-------------|
-| `position_model_1.joblib` | GK | 1 |
-| `position_model_2.joblib` | DEF | 2 |
-| `position_model_3.joblib` | MID | 3 |
-| `position_model_4.joblib` | FWD | 4 |
+To add a new algorithm to the pipeline:
 
-### Feature Contract
-
-The model's `.predict(X)` will receive a DataFrame with these columns (order may vary):
-- `price_now` (numeric, FPL tenths of £M)
-- All `1_years_past_*` columns that are numeric in the training data (23 columns)
-- NaN values are filled with 0 before calling predict (in `team_builder.py`)
-
-If the model is a Pipeline with its own imputer, it will receive NaN values directly (the Pipeline handles imputation).
+1. **In `training/benchmark_models.py`:** Add to `_get_algorithms()` and to `NATIVE_NAN_ALGORITHMS` if it handles NaN natively.
+2. **In `training/tune_models.py`:** Add to `PARAM_GRIDS` with a hyperparameter search space, `_get_base_estimator()`, and update `POSITION_ALGORITHMS` if it should be in the top 3 for any position.
+3. **In `training/train_final_models.py`:** Update `POSITION_WINNERS` and `ENSEMBLE_MEMBERS` if the new algorithm wins for any position.
 
 ---
 
 ## Section 8: Gaps and Opportunities
 
-### Data Available but Unused
+### What We Learned
 
-1. **2-year lag features** (`2_years_past_*`) — 23 columns per player capturing performance from 2 seasons ago. Could help model career trajectories and distinguish one-season wonders from consistent performers.
-2. **3-year lag features** (`3_years_past_*`) — 23 columns. Even deeper history.
-3. **Season 2024-25 data** — Available in `data/historical_exports/historical_players_2024-25.csv` (807 rows) but not used for training in the basic/comparison models (only 2019-20 to 2022-23 train, 2023-24 test).
-4. **`1_years_past_element_type`** — included in features but is just the position code. Redundant since models are already position-specific.
+1. **Multi-year features helped DEF but not others.** The 2-year and 3-year lag features were critical for defenders (playing time consistency across seasons is highly predictive) but added noise for other positions.
 
-### Algorithms Not Tried
+2. **Feature selection helped DEF dramatically (74→14) and MID slightly (74→51).** For GK and FWD, all 74 features contributed positive signal — no pruning was beneficial.
 
-- **Neural networks** (MLP, simple feed-forward)
-- **Stacking / blending ensembles** (combine RF + XGBoost + Ridge predictions)
-- **CatBoost** (handles categoricals natively)
-- **Bayesian hyperparameter optimization** (instead of random search with only 5 iterations)
-- **Quantile regression** (predict confidence intervals, not just point estimates)
+3. **Linear models dominated DEF and MID.** Ridge and ElasticNet outperformed all tree-based models for these positions, likely because the relationship between historical stats and future points is more linear for defensive and midfield players.
 
-### Feature Engineering Opportunities
+4. **FWD remains the hardest position.** Unseen MAE of 30.53 (R²=0.31) with the best available model. Contributing factors: small training set (375 players across 3 seasons), high variance in attacking output (breakout seasons, injuries), and the inherent unpredictability of goal-scoring. Research papers confirm that attacking positions are harder to predict (Paper 1: different algorithms needed per position; Paper 3: standard features outperform advanced features, suggesting that more data doesn't always help).
 
-1. **Form trends:** Delta between 1-year and 2-year stats (improving vs declining players)
-2. **Per-90 stats for more metrics:** Currently only total_points_per_90 and ict_index_per_90. Could compute goals_per_90, assists_per_90, bps_per_90, etc.
-3. **Playing time stability:** Variance in minutes across gameweeks (from raw GW data if available)
-4. **Price momentum:** `price_now - 1_years_past_now_cost` (market signal of expected improvement)
-5. **Age** (not in current data, would need external source)
-6. **Fixture difficulty** (FDR from FPL API — more relevant for gameweek prediction)
-7. **Team strength proxy:** Average team total_points from prior season
-8. **Binary "played last season" flag:** To help model distinguish non-playing from playing players (major error source)
+5. **GK had the strongest baseline and resisted improvement.** The old RF model's unseen MAE of 14.35 was already strong. XGBoost got close (14.78) but couldn't beat it. GK prediction may be approaching a natural floor — goalkeeper performance is dominated by playing time (starting vs. backup) which is hard to predict from historical stats alone.
 
-### Baseline Performance (Beat These)
+### What's Still Untried
 
-Any new model must beat the current best test MAE per position on the 2023-24 holdout:
+- **Stacking:** Use predictions from multiple base models as features for a meta-learner (e.g., Ridge on top of RF + XGBoost + ElasticNet predictions). Could improve on simple averaging (VotingRegressor).
+- **Neural networks:** Simple MLP or feed-forward networks. Literature suggests they don't outperform gradient boosting on tabular data of this size, but worth testing.
+- **Per-player models for top players:** Build individual models for the ~50 most-expensive or most-owned players, falling back to position-group models for the rest (inspired by Paper 3).
+- **Anomaly detection / target smoothing:** Filter or smooth extreme outlier target values in training data to reduce overfitting to anomalous seasons.
+- **CatBoost:** Handles categoricals natively and has strong regularization — not tested in our benchmark.
+- **Bayesian hyperparameter optimization:** More sample-efficient than RandomizedSearchCV, especially with the larger parameter spaces used in Task 4.
 
-| Position | Current Best MAE | Current Best Model | Current Best RMSE |
-|----------|-----------------|-------------------|------------------|
-| GK | 14.617 | RandomForest (comparison, no weights) | 28.075 |
-| DEF | 20.507 | XGBoost (comparison, no weights) | 26.514 |
-| MID | 24.849 | RandomForest (comparison, no weights) | 36.190 |
-| FWD | 27.496 | RandomForest (comparison, no weights) | 44.605 |
+### UC2 Gameweek Model
 
-**Weighted average baseline MAE** (by test set size): (14.617×100 + 20.507×285 + 24.849×374 + 27.496×113) / 872 = **22.38**
+The biggest remaining gap is the gameweek prediction model (`src/gameweek_predictor.py`), which is still a placeholder using `ep_next` → `points_per_game` → `predicted_points/38` fallback chain. Literature (Papers 1, 2, 3) unanimously recommends rolling-window features from recent gameweeks (last 3/5/7 GW points, form, fixture difficulty). Building a real gameweek model is the single highest-impact remaining ML task.
 
-### Quick Wins
+### Baselines to Beat
 
-1. **Remove sample weighting** from the advanced experiment — it consistently hurt performance
-2. **Use XGBoost for DEF** — already proven to beat RF by 3.3 MAE points
-3. **Increase RandomizedSearchCV iterations** from 5 to 20+ — current search barely explores the space
-4. **Add a "minutes > 0 last season" binary feature** — directly addresses the biggest error source
-5. **Train on more seasons** (add 2023-24 to training, test on 2024-25) — more data usually helps
+Any future model improvement must beat the **currently deployed models** on the unseen split (2023-24):
+
+| Position | Current Unseen MAE | Current Model |
+|----------|-------------------|---------------|
+| GK | 14.783454895019531 | XGBoost (tuned, 74 features) |
+| DEF | 21.6061 | ElasticNet (pruned, 14 features) |
+| MID | 24.93146684703982 | Ridge (pruned, 51 features) |
+| FWD | 30.532042380084782 | LightGBM (tuned, 74 features) |

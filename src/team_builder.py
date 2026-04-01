@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -62,7 +63,8 @@ def _build_feature_cols(df: pd.DataFrame) -> list[str]:
     numeric_candidates = [
         col
         for col in df.columns
-        if col.startswith("1_years_past_")
+        if any(col.startswith(f"{y}_years_past_") for y in (1, 2, 3))
+        or col.startswith("momentum_")
     ]
     for col in numeric_candidates + ["price_now"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -74,11 +76,36 @@ def _build_feature_cols(df: pd.DataFrame) -> list[str]:
         raise ValueError("price_now must be numeric")
 
     feature_cols = ["price_now"] + [
-        col for col in numeric_cols if col != "price_now" and col.startswith("1_years_past_")
+        col for col in numeric_cols
+        if col != "price_now"
+        and (any(col.startswith(f"{y}_years_past_") for y in (1, 2, 3))
+             or col.startswith("momentum_"))
     ]
     if len(feature_cols) == 1:
-        raise ValueError("No numeric 1_years_past_* feature columns found")
+        raise ValueError("No numeric lag or momentum feature columns found")
     return feature_cols
+
+
+def _add_momentum_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute momentum (year-over-year delta) features.
+
+    momentum_X = 1_years_past_X - 2_years_past_X
+    If either operand is NaN, the result is NaN (filled to 0 later by fillna).
+    """
+    pairs = [
+        ("momentum_total_points", "1_years_past_total_points", "2_years_past_total_points"),
+        ("momentum_minutes", "1_years_past_minutes", "2_years_past_minutes"),
+        ("momentum_ict_index", "1_years_past_ict_index", "2_years_past_ict_index"),
+        ("momentum_goals_scored", "1_years_past_goals_scored", "2_years_past_goals_scored"),
+    ]
+    for new_col, col_1y, col_2y in pairs:
+        if col_1y in df.columns and col_2y in df.columns:
+            s1 = pd.to_numeric(df[col_1y], errors="coerce")
+            s2 = pd.to_numeric(df[col_2y], errors="coerce")
+            df[new_col] = s1 - s2
+        else:
+            df[new_col] = float("nan")
+    return df
 
 
 def _map_position(series: pd.Series) -> pd.Series:
@@ -116,13 +143,44 @@ def _load_models(models_dir: str) -> dict[str, object]:
     return models
 
 
+_SELECTED_FEATURES_PATH = Path(__file__).resolve().parent.parent / "training" / "selected_features.json"
+
+
+def _load_selected_features(
+    path: Path | str | None = None,
+) -> dict[str, list[str]] | None:
+    """Load per-position selected feature lists from JSON.
+
+    Returns a dict mapping position code string ("1", "2", "3", "4") to
+    a list of feature column names.  Returns None if the file doesn't exist.
+    """
+    if path is None:
+        path = _SELECTED_FEATURES_PATH
+    path = Path(path)
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
 def _predict(df: pd.DataFrame, feature_cols: list[str], models_dir: str) -> pd.Series:
     models = _load_models(models_dir)
+    selected = _load_selected_features()
     preds = pd.Series(index=df.index, dtype="float64")
+
+    pos_to_code = {"GK": "1", "DEF": "2", "MID": "3", "FWD": "4"}
 
     for position, model in models.items():
         mask = df["position"] == position
-        subset = df.loc[mask, feature_cols]
+
+        # Use selected features for this position if available
+        pos_code = pos_to_code.get(position)
+        if selected and pos_code and pos_code in selected:
+            pos_features = [f for f in selected[pos_code] if f in df.columns]
+        else:
+            pos_features = feature_cols
+
+        subset = df.loc[mask, pos_features]
         if subset.empty:
             continue
         if hasattr(model, "predict"):
@@ -285,6 +343,7 @@ def _prepare_player_df(
     df, dropped_invalid, invalid_values = _validate_and_filter_element_type(df)
     df["position"] = _map_position(df["element_type"])
 
+    df = _add_momentum_features(df)
     feature_cols = _build_feature_cols(df)
     df["price_now"] = pd.to_numeric(df["price_now"], errors="coerce")
     if df["price_now"].isna().any():

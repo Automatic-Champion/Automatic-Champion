@@ -18,6 +18,14 @@ class MockModel:
         self.feature_names_in_ = np.array(feature_names)
 
 
+class MockLinearModel:
+    """A picklable mock linear model with coef_ and feature_names_in_."""
+
+    def __init__(self, feature_names: list[str], coefficients: list[float]) -> None:
+        self.coef_ = np.array(coefficients)
+        self.feature_names_in_ = np.array(feature_names)
+
+
 def _make_mock_model(feature_names: list[str], importances: list[float]) -> MockModel:
     return MockModel(feature_names, importances)
 
@@ -137,3 +145,42 @@ def test_explain_squad_calls_explain_selection() -> None:
 
     assert "1" in result
     assert len(result["1"]) == 2
+
+
+def test_explain_selection_linear_model_coef() -> None:
+    """Linear models (Ridge/ElasticNet) use coef_ instead of feature_importances_."""
+    feature_names = ["price_now", "1_years_past_goals_scored", "1_years_past_assists"]
+    # Negative coefficient should still rank high (absolute value used)
+    coefficients = [0.1, -0.8, 0.3]
+    mock_model = MockLinearModel(feature_names, coefficients)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data_path = _make_test_csv(tmpdir)
+        import joblib
+
+        joblib.dump(mock_model, Path(tmpdir) / "position_model_3.joblib")
+
+        result = explain_selection(
+            player_id="1",
+            position="MID",
+            data_path=data_path,
+            models_dir=tmpdir,
+            top_k=3,
+        )
+
+    assert len(result) == 3
+    for item in result:
+        assert "feature" in item
+        assert "value" in item
+        assert "importance" in item
+        assert "explanation" in item
+        assert isinstance(item["importance"], float)
+        assert isinstance(item["explanation"], str)
+
+    # Sorted by abs(coef_) descending: goals_scored(0.8) > assists(0.3) > price(0.1)
+    assert result[0]["feature"] == "1_years_past_goals_scored"
+    assert result[0]["importance"] == 0.8
+    assert result[1]["feature"] == "1_years_past_assists"
+    assert result[1]["importance"] == 0.3
+    assert result[2]["feature"] == "price_now"
+    assert result[2]["importance"] == 0.1

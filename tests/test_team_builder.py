@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
 import pandas as pd
 
-from src.team_builder import build_team_433
+import numpy as np
+
+from src.team_builder import build_team_433, _add_momentum_features, _build_feature_cols, _load_selected_features
 
 
 def _make_row(player_id: int, name: str, team: str, element_type: int, price_now: int, pred: float) -> dict:
@@ -19,6 +22,16 @@ def _make_row(player_id: int, name: str, team: str, element_type: int, price_now
         "price_now": price_now,
         "1_years_past_goals_scored": 1,
         "1_years_past_assists": 1,
+        "1_years_past_total_points": 50,
+        "1_years_past_minutes": 1000,
+        "1_years_past_ict_index": 30.0,
+        "2_years_past_goals_scored": 0,
+        "2_years_past_assists": 0,
+        "2_years_past_total_points": 40,
+        "2_years_past_minutes": 800,
+        "2_years_past_ict_index": 25.0,
+        "3_years_past_goals_scored": 0,
+        "3_years_past_total_points": 35,
         "pred": pred,
     }
 
@@ -68,3 +81,75 @@ def test_build_team_433_stub_mode() -> None:
     for player in players:
         team_counts[player["team"]] = team_counts.get(player["team"], 0) + 1
     assert all(count <= 3 for count in team_counts.values())
+
+
+def test_add_momentum_features_computes_deltas() -> None:
+    df = pd.DataFrame([{
+        "1_years_past_total_points": 100,
+        "2_years_past_total_points": 80,
+        "1_years_past_minutes": 2000,
+        "2_years_past_minutes": 1500,
+        "1_years_past_ict_index": 50.0,
+        "2_years_past_ict_index": 40.0,
+        "1_years_past_goals_scored": 10,
+        "2_years_past_goals_scored": 7,
+    }])
+    result = _add_momentum_features(df)
+    assert result["momentum_total_points"].iloc[0] == 20
+    assert result["momentum_minutes"].iloc[0] == 500
+    assert result["momentum_ict_index"].iloc[0] == 10.0
+    assert result["momentum_goals_scored"].iloc[0] == 3
+
+
+def test_add_momentum_features_nan_when_missing_2y() -> None:
+    df = pd.DataFrame([{
+        "1_years_past_total_points": 100,
+        "1_years_past_minutes": 2000,
+        "1_years_past_ict_index": 50.0,
+        "1_years_past_goals_scored": 10,
+    }])
+    result = _add_momentum_features(df)
+    assert np.isnan(result["momentum_total_points"].iloc[0])
+    assert np.isnan(result["momentum_minutes"].iloc[0])
+
+
+def test_build_feature_cols_includes_multi_year_and_momentum() -> None:
+    df = pd.DataFrame([{
+        "price_now": 50,
+        "1_years_past_goals_scored": 5,
+        "2_years_past_goals_scored": 3,
+        "3_years_past_goals_scored": 2,
+        "momentum_total_points": 10,
+        "other_col": "ignore",
+    }])
+    cols = _build_feature_cols(df)
+    assert "price_now" in cols
+    assert "1_years_past_goals_scored" in cols
+    assert "2_years_past_goals_scored" in cols
+    assert "3_years_past_goals_scored" in cols
+    assert "momentum_total_points" in cols
+    assert "other_col" not in cols
+
+
+def test_load_selected_features_returns_none_when_missing() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "nonexistent.json"
+        result = _load_selected_features(path)
+    assert result is None
+
+
+def test_load_selected_features_returns_dict_when_exists() -> None:
+    expected = {
+        "1": ["price_now", "1_years_past_total_points"],
+        "2": ["price_now", "1_years_past_clean_sheets"],
+        "3": ["price_now", "1_years_past_ict_index"],
+        "4": ["price_now", "1_years_past_creativity"],
+    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "selected_features.json"
+        with open(path, "w") as f:
+            json.dump(expected, f)
+        result = _load_selected_features(path)
+    assert result == expected
+    assert isinstance(result["1"], list)
+    assert len(result) == 4
