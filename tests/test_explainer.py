@@ -177,10 +177,10 @@ def test_explain_selection_linear_model_coef() -> None:
         assert isinstance(item["importance"], float)
         assert isinstance(item["explanation"], str)
 
-    # Sorted by abs(coef_) descending: goals_scored(0.8) > assists(0.3) > price(0.1)
+    # Sorted by normalized abs(coef_) descending: goals_scored(0.8/1.2) > assists(0.3/1.2) > price(0.1/1.2)
     assert result[0]["feature"] == "1_years_past_goals_scored"
-    assert result[0]["importance"] == 0.8
+    assert abs(result[0]["importance"] - 0.8 / 1.2) < 1e-6
     assert result[1]["feature"] == "1_years_past_assists"
-    assert result[1]["importance"] == 0.3
+    assert abs(result[1]["importance"] - 0.3 / 1.2) < 1e-6
     assert result[2]["feature"] == "price_now"
-    assert result[2]["importance"] == 0.1
+    assert abs(result[2]["importance"] - 0.1 / 1.2) < 1e-6

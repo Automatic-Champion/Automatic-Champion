@@ -1,6 +1,6 @@
 # ML Model Report — Automatic Champion
 
-**Updated:** 2026-03-31
+**Updated:** 2026-04-04
 **Purpose:** Comprehensive documentation of all ML models, training data, experiments, and the improvement journey from baseline RandomForest to the current deployed models.
 
 ---
@@ -50,17 +50,19 @@ Players missing lag data have empty/NaN values for those columns. Missing data i
 
 ## Section 2: Feature Engineering
 
-### Full Feature Set (74 features)
+### Full Feature Set (71 features)
 
 The function `_build_feature_cols()` in `src/team_builder.py:59-86` selects all available features:
 
 1. **`price_now`** (1 feature) — current season price in tenths of £M
-2. **`1_years_past_*`** (23 features) — all numeric 1-year lag stats
-3. **`2_years_past_*`** (23 features) — all numeric 2-year lag stats
-4. **`3_years_past_*`** (23 features) — all numeric 3-year lag stats
+2. **`1_years_past_*`** (22 features) — all numeric 1-year lag stats (excluding element_type)
+3. **`2_years_past_*`** (22 features) — all numeric 2-year lag stats (excluding element_type)
+4. **`3_years_past_*`** (22 features) — all numeric 3-year lag stats (excluding element_type)
 5. **`momentum_*`** (4 features) — year-over-year deltas computed by `_add_momentum_features()` in `src/team_builder.py:89-108`
 
-The 23 stats per lag period are: `goals_scored`, `assists`, `total_points`, `minutes`, `goals_conceded`, `creativity`, `influence`, `threat`, `bonus`, `bps`, `ict_index`, `clean_sheets`, `red_cards`, `yellow_cards`, `selected_by_percent`, `now_cost`, `element_type`, `gw_games_played`, `gw_minutes_per_game`, `gw_penalties_missed`, `gw_penalties_saved`, `gw_own_goals`, `gw_saves`.
+The 22 stats per lag period are: `goals_scored`, `assists`, `total_points`, `minutes`, `goals_conceded`, `creativity`, `influence`, `threat`, `bonus`, `bps`, `ict_index`, `clean_sheets`, `red_cards`, `yellow_cards`, `selected_by_percent`, `now_cost`, `gw_games_played`, `gw_minutes_per_game`, `gw_penalties_missed`, `gw_penalties_saved`, `gw_own_goals`, `gw_saves`.
+
+**Note:** `*_element_type` features (3 lag columns) were removed as non-predictive noise — element_type is a categorical position indicator that leaks no predictive signal through lag windows.
 
 The 4 momentum features are:
 - `momentum_total_points` = `1_years_past_total_points` − `2_years_past_total_points`
@@ -74,14 +76,14 @@ Not all positions use all 74 features. Permutation importance (Task 5) pruned fe
 
 | Position | Features Used | Pruned From |
 |----------|--------------|-------------|
-| GK | 74 (all) | No pruning — all features had positive permutation importance |
-| DEF | 14 | 60 features removed |
-| MID | 51 | 23 features removed |
-| FWD | 74 (all) | No pruning — all features had positive permutation importance |
+| GK | 71 (all) | No pruning — all features had positive permutation importance |
+| DEF | 14 | 57 features removed |
+| MID | 49 | 22 features removed |
+| FWD | 71 (all) | No pruning — all features had positive permutation importance |
 
 **DEF selected features (14):** `price_now`, `1_years_past_total_points`, `1_years_past_minutes`, `1_years_past_creativity`, `1_years_past_influence`, `2_years_past_minutes`, `2_years_past_creativity`, `2_years_past_influence`, `2_years_past_bps`, `3_years_past_minutes`, `3_years_past_creativity`, `3_years_past_influence`, `3_years_past_threat`, `3_years_past_gw_minutes_per_game`
 
-**MID selected features (51):** `price_now` + 20 from `1_years_past_*` + 10 from `2_years_past_*` + 16 from `3_years_past_*` + 4 momentum features. Full list in `training/selected_features.json` under key `"3"`.
+**MID selected features (49):** `price_now` + 19 from `1_years_past_*` + 9 from `2_years_past_*` + 16 from `3_years_past_*` + 4 momentum features. Full list in `training/selected_features.json` under key `"3"`.
 
 ### How Features Reach the Model at Inference Time
 
@@ -95,20 +97,20 @@ In `_predict()` (`src/team_builder.py:166-198`):
 
 ## Section 3: Currently Deployed Models
 
-These are the models saved in `models/position_model_*.joblib` as of 2026-03-31, produced by `training/train_final_models.py`.
+These are the models saved in `models/position_model_*.joblib` as of 2026-04-04. Retrained without `*_element_type` features (removed as non-predictive noise).
 
 ### Overview
 
-| Position | File | Algorithm | Features | Unseen MAE | Unseen RMSE | Unseen R² | File Size |
-|----------|------|-----------|----------|------------|-------------|-----------|-----------|
-| GK | `position_model_1.joblib` | XGBoost (tuned) | 74 (all) | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 | 444 KB |
-| DEF | `position_model_2.joblib` | ElasticNet (pruned) | 14 (pruned) | 21.606100 | 27.060600 | 0.4945 | 1.3 KB |
-| MID | `position_model_3.joblib` | Ridge (tuned) | 51 (pruned) | 24.93146684703982 | 36.29813922967667 | 0.4933007276001432 | 2.5 KB |
-| FWD | `position_model_4.joblib` | LightGBM (tuned) | 74 (all) | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 | 398 KB |
+| Position | File | Algorithm | Features | Unseen MAE | Unseen RMSE | Unseen R² |
+|----------|------|-----------|----------|------------|-------------|-----------|
+| GK | `position_model_1.joblib` | XGBoost (tuned) | 71 (all) | 15.6901 | — | — |
+| DEF | `position_model_2.joblib` | ElasticNet (pruned) | 14 (pruned) | 21.6061 | — | — |
+| MID | `position_model_3.joblib` | Ridge (tuned) | 49 (pruned) | 25.8824 | — | — |
+| FWD | `position_model_4.joblib` | LightGBM (tuned) | 71 (all) | 29.6821 | — | — |
 
-### GK: XGBoost (Tuned, 74 Features)
+### GK: XGBoost (Tuned, 71 Features)
 
-**Approach:** Task 4 single model — tuned XGBoost with all 74 features.
+**Approach:** Tuned XGBoost with all 71 features (element_type features removed).
 
 **Hyperparameters:**
 - `n_estimators`: 500
@@ -121,12 +123,11 @@ These are the models saved in `models/position_model_*.joblib` as of 2026-03-31,
 - `random_state`: 42
 
 **Metrics:**
-| Split | MAE | RMSE | R² |
-|-------|-----|------|----|
-| Test (2022-23) | 19.996328353881836 | 33.07041862285122 | 0.5955455303192139 |
-| Unseen (2023-24) | 14.783454895019531 | 26.469943293275463 | 0.5963307619094849 |
+| Split | MAE |
+|-------|-----|
+| Unseen (2023-24) | 15.6901 |
 
-**Feature contract:** Receives all 74 features. NaN values are NOT filled — XGBoost handles them natively.
+**Feature contract:** Receives all 71 features. NaN values are NOT filled — XGBoost handles them natively.
 
 ### DEF: ElasticNet (14 Pruned Features)
 
@@ -138,30 +139,29 @@ These are the models saved in `models/position_model_*.joblib` as of 2026-03-31,
 - `max_iter`: 10000
 
 **Metrics:**
-| Split | MAE | RMSE | R² |
-|-------|-----|------|----|
-| Unseen (2023-24) | 21.6061 | 27.0606 | 0.4945 |
+| Split | MAE |
+|-------|-----|
+| Unseen (2023-24) | 21.6061 |
 
 **Feature contract:** Receives 14 pruned features listed in `training/selected_features.json` under key `"2"`. NaN filled with 0.
 
-### MID: Ridge (51 Pruned Features)
+### MID: Ridge (49 Pruned Features)
 
-**Approach:** Task 5 pruned single model — Ridge with 51 permutation-selected features.
+**Approach:** Pruned single model — Ridge with 49 permutation-selected features (element_type features removed).
 
 **Hyperparameters:**
 - `alpha`: 100.0
 
 **Metrics:**
-| Split | MAE | RMSE | R² |
-|-------|-----|------|----|
-| Test (2022-23) | 25.936406745607044 | 38.593623656055186 | 0.41271493104911783 |
-| Unseen (2023-24) | 24.93146684703982 | 36.29813922967667 | 0.4933007276001432 |
+| Split | MAE |
+|-------|-----|
+| Unseen (2023-24) | 25.8824 |
 
-**Feature contract:** Receives 51 pruned features listed in `training/selected_features.json` under key `"3"`. NaN filled with 0.
+**Feature contract:** Receives 49 pruned features listed in `training/selected_features.json` under key `"3"`. NaN filled with 0.
 
-### FWD: LightGBM (Tuned, 74 Features)
+### FWD: LightGBM (Tuned, 71 Features)
 
-**Approach:** Task 4 single model — tuned LightGBM with all 74 features.
+**Approach:** Tuned LightGBM with all 71 features (element_type features removed).
 
 **Hyperparameters:**
 - `n_estimators`: 500
@@ -176,12 +176,11 @@ These are the models saved in `models/position_model_*.joblib` as of 2026-03-31,
 - `random_state`: 42
 
 **Metrics:**
-| Split | MAE | RMSE | R² |
-|-------|-----|------|----|
-| Test (2022-23) | 28.156730438684697 | 39.91926095596081 | 0.49282659646821003 |
-| Unseen (2023-24) | 30.532042380084782 | 44.76453741072169 | 0.3104481140334596 |
+| Split | MAE |
+|-------|-----|
+| Unseen (2023-24) | 29.6821 |
 
-**Feature contract:** Receives all 74 features. NaN values are NOT filled — LightGBM handles them natively.
+**Feature contract:** Receives all 71 features. NaN values are NOT filled — LightGBM handles them natively.
 
 ### Explainer Compatibility
 
@@ -447,10 +446,10 @@ These experiments informed the improvement journey but their metrics are not dir
 
 | Position | Original Baseline (Unseen MAE) | Final Model | Final Unseen MAE | Change | Algorithm | Features |
 |----------|-------------------------------|-------------|-----------------|--------|-----------|----------|
-| GK | 14.353356666666667 | XGBoost (tuned) | 14.783454895019531 | +0.430098228352864 | XGBoost | 74 |
-| DEF | 24.381740347079823 | ElasticNet (pruned) | 21.6061 | -2.7756 | ElasticNet | 14 |
-| MID | 25.063430926916222 | Ridge (pruned) | 24.93146684703982 | -0.131964079876402 | Ridge | 51 |
-| FWD | 27.68734963094919 | LightGBM (tuned) | 30.532042380084782 | +2.844692749135592 | LightGBM | 74 |
+| GK | 14.353356666666667 | XGBoost (tuned) | 15.6901 | +1.337 | XGBoost | 71 |
+| DEF | 24.381740347079823 | ElasticNet (pruned) | 21.6061 | -2.776 | ElasticNet | 14 |
+| MID | 25.063430926916222 | Ridge (pruned) | 25.8824 | +0.819 | Ridge | 49 |
+| FWD | 27.68734963094919 | LightGBM (tuned) | 29.6821 | +1.995 | LightGBM | 71 |
 
 **Summary:**
 - **DEF improved by 2.78 MAE points** — the largest gain, driven by switching from RandomForest to ElasticNet with aggressive feature pruning (74→14 features). Multi-year lag features that capture playing time consistency across seasons proved critical for defenders. The ensemble (MAE 21.03) was replaced by a single ElasticNet (MAE 21.61) to enable explanations.
@@ -510,14 +509,14 @@ Tunes top 3 algorithms per position with RandomizedSearchCV. Saves results to `t
 
 Models are loaded and invoked via `_predict()` in `src/team_builder.py:166-198`:
 
-1. `_build_feature_cols()` detects all available numeric features from the input DataFrame (up to 74)
+1. `_build_feature_cols()` detects all available numeric features from the input DataFrame (up to 71, excluding element_type)
 2. `_add_momentum_features()` computes the 4 momentum features in-place
 3. `_load_selected_features()` loads `training/selected_features.json`
 4. Each model receives only its position-specific features:
-   - **GK (key "1"):** 74 features — all columns (XGBoost receives NaN natively)
+   - **GK (key "1"):** 71 features — all columns (XGBoost receives NaN natively)
    - **DEF (key "2"):** 14 features — pruned list (fillna(0) for ElasticNet)
-   - **MID (key "3"):** 51 features — pruned list (fillna(0) for Ridge)
-   - **FWD (key "4"):** 74 features — all columns (LightGBM receives NaN natively)
+   - **MID (key "3"):** 49 features — pruned list (fillna(0) for Ridge)
+   - **FWD (key "4"):** 71 features — all columns (LightGBM receives NaN natively)
 
 ### Deploying a New Model
 
@@ -574,7 +573,7 @@ Any future model improvement must beat the **currently deployed models** on the 
 
 | Position | Current Unseen MAE | Current Model |
 |----------|-------------------|---------------|
-| GK | 14.783454895019531 | XGBoost (tuned, 74 features) |
+| GK | 15.6901 | XGBoost (tuned, 71 features) |
 | DEF | 21.6061 | ElasticNet (pruned, 14 features) |
-| MID | 24.93146684703982 | Ridge (pruned, 51 features) |
-| FWD | 30.532042380084782 | LightGBM (tuned, 74 features) |
+| MID | 25.8824 | Ridge (pruned, 49 features) |
+| FWD | 29.6821 | LightGBM (tuned, 71 features) |

@@ -121,6 +121,13 @@ def _explain_selection_preloaded(
     else:
         return []
 
+    # Normalize to 0-1 range so frontend can display as percentages
+    total = float(np.sum(np.abs(importances_array)))
+    if total > 0:
+        importances_array = np.abs(importances_array) / total
+    else:
+        importances_array = np.abs(importances_array)
+
     row = df[df["id"].astype(str) == str(player_id)]
     if row.empty:
         return []
@@ -139,9 +146,10 @@ def _explain_selection_preloaded(
     if len(importances) != len(feature_cols):
         return []
 
-    # Pair features with importances, sort descending
+    # Pair features with importances, filter noise, sort descending
     feat_imp = sorted(
-        zip(feature_cols, importances),
+        [(f, imp) for f, imp in zip(feature_cols, importances)
+         if "element_type" not in f],
         key=lambda x: x[1],
         reverse=True,
     )
@@ -194,6 +202,8 @@ def explain_selection(
         return []
 
     df = pd.read_csv(data_file)
+    df = df[df["id"].notna()]
+    df["id"] = df["id"].astype(float).astype(int).astype(str)
     models = {position: model}
 
     return _explain_selection_preloaded(
@@ -224,6 +234,8 @@ def explain_squad(
         return {str(player["id"]): [] for player in players}
 
     df = pd.read_csv(data_file)
+    df = df[df["id"].notna()]
+    df["id"] = df["id"].astype(float).astype(int).astype(str)
 
     # Load each needed model once
     needed_positions = {player["position"] for player in players}

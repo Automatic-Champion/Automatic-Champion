@@ -1,0 +1,4 @@
+declare module "*.svg?react" {
+  import React from "react";
+  export const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
+}

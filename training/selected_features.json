@@ -17,7 +17,7 @@
     "1_years_past_yellow_cards",
     "1_years_past_selected_by_percent",
     "1_years_past_now_cost",
-    "1_years_past_element_type",
+
     "1_years_past_gw_games_played",
     "1_years_past_gw_minutes_per_game",
     "1_years_past_gw_penalties_missed",
@@ -40,7 +40,7 @@
     "2_years_past_yellow_cards",
     "2_years_past_selected_by_percent",
     "2_years_past_now_cost",
-    "2_years_past_element_type",
+
     "2_years_past_gw_games_played",
     "2_years_past_gw_minutes_per_game",
     "2_years_past_gw_penalties_missed",
@@ -62,7 +62,7 @@
     "3_years_past_red_cards",
     "3_years_past_yellow_cards",
     "3_years_past_selected_by_percent",
-    "3_years_past_element_type",
+
     "3_years_past_gw_games_played",
     "3_years_past_gw_minutes_per_game",
     "3_years_past_gw_penalties_missed",
@@ -108,7 +108,7 @@
     "1_years_past_yellow_cards",
     "1_years_past_selected_by_percent",
     "1_years_past_now_cost",
-    "1_years_past_element_type",
+
     "1_years_past_gw_games_played",
     "1_years_past_gw_minutes_per_game",
     "1_years_past_gw_penalties_missed",
@@ -135,7 +135,7 @@
     "3_years_past_red_cards",
     "3_years_past_yellow_cards",
     "3_years_past_selected_by_percent",
-    "3_years_past_element_type",
+
     "3_years_past_gw_games_played",
     "3_years_past_gw_minutes_per_game",
     "3_years_past_now_cost",
@@ -162,7 +162,7 @@
     "1_years_past_yellow_cards",
     "1_years_past_selected_by_percent",
     "1_years_past_now_cost",
-    "1_years_past_element_type",
+
     "1_years_past_gw_games_played",
     "1_years_past_gw_minutes_per_game",
     "1_years_past_gw_penalties_missed",
@@ -185,7 +185,7 @@
     "2_years_past_yellow_cards",
     "2_years_past_selected_by_percent",
     "2_years_past_now_cost",
-    "2_years_past_element_type",
+
     "2_years_past_gw_games_played",
     "2_years_past_gw_minutes_per_game",
     "2_years_past_gw_penalties_missed",
@@ -207,7 +207,7 @@
     "3_years_past_red_cards",
     "3_years_past_yellow_cards",
     "3_years_past_selected_by_percent",
-    "3_years_past_element_type",
+
     "3_years_past_gw_games_played",
     "3_years_past_gw_minutes_per_game",
     "3_years_past_gw_penalties_missed",
