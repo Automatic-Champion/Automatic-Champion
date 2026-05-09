@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { SquadPlayerResponse } from "@/api/types";
+import type { DisplayPlayer } from "@/api/types";
 
 interface BenchCardProps {
-  player: SquadPlayerResponse;
+  player: DisplayPlayer;
   benchOrder: number;
   isSelected?: boolean;
   onClick?: () => void;
@@ -34,11 +34,13 @@ export default function BenchCard({
         <Badge variant="outline" className="shrink-0 text-xs">
           {player.position}
         </Badge>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          £{player.cost.toFixed(1)}m
-        </span>
+        {player.cost != null && (
+          <span className="shrink-0 text-xs text-muted-foreground">
+            £{player.cost.toFixed(1)}m
+          </span>
+        )}
         <span className="shrink-0 text-sm font-semibold">
-          {player.predicted_points.toFixed(1)}
+          {player.points.toFixed(1)}
         </span>
       </CardContent>
     </Card>

@@ -7,12 +7,21 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { SquadPlayerResponse } from "@/api/types";
+import type { DisplayPlayer } from "@/api/types";
 
 interface ExplanationPanelProps {
-  player: SquadPlayerResponse | null;
+  player: DisplayPlayer | null;
   onClose: () => void;
 }
+
+const categoryColors: Record<string, string> = {
+  performance: "bg-blue-100 text-blue-800",
+  attacking: "bg-red-100 text-red-800",
+  defensive: "bg-green-100 text-green-800",
+  reliability: "bg-amber-100 text-amber-800",
+  value: "bg-purple-100 text-purple-800",
+  trending: "bg-cyan-100 text-cyan-800",
+};
 
 export default function ExplanationPanel({
   player,
@@ -39,14 +48,18 @@ export default function ExplanationPanel({
                 </Button>
               </div>
               <div className="mt-3 flex gap-4 text-sm">
+                {player.cost != null && (
+                  <div>
+                    <span className="text-muted-foreground">Cost</span>
+                    <p className="font-semibold">£{player.cost.toFixed(1)}m</p>
+                  </div>
+                )}
                 <div>
-                  <span className="text-muted-foreground">Cost</span>
-                  <p className="font-semibold">£{player.cost.toFixed(1)}m</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Predicted Pts</span>
+                  <span className="text-muted-foreground">
+                    {player.pointsLabel}
+                  </span>
                   <p className="font-semibold">
-                    {player.predicted_points.toFixed(1)}
+                    {player.points.toFixed(1)}
                   </p>
                 </div>
               </div>
@@ -65,23 +78,12 @@ export default function ExplanationPanel({
                       key={i}
                       className="rounded-lg border bg-muted/30 p-3 text-sm"
                     >
-                      <p>{exp.explanation}</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {exp.feature}
-                        </span>
-                        <div className="flex-1">
-                          <div className="h-1.5 w-full rounded-full bg-muted">
-                            <div
-                              className="h-1.5 rounded-full bg-primary"
-                              style={{
-                                width: `${Math.min(Math.abs(exp.importance) * 100, 100)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <span className="text-xs font-medium">
-                          {(Math.abs(exp.importance) * 100).toFixed(0)}%
+                      <p>{exp.text}</p>
+                      <div className="mt-2">
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[exp.category] ?? "bg-gray-100 text-gray-800"}`}
+                        >
+                          {exp.category}
                         </span>
                       </div>
                     </li>

@@ -13,7 +13,22 @@ import type {
   SquadGenerateRequest,
   SquadGenerateResponse,
   SquadPlayerResponse,
+  DisplayPlayer,
 } from "../api/types";
+
+function squadPlayerToDisplay(p: SquadPlayerResponse): DisplayPlayer {
+  return {
+    id: p.id,
+    name: p.name,
+    position: p.position,
+    team: p.team,
+    points: p.predicted_points,
+    pointsLabel: "Predicted Pts",
+    cost: p.cost,
+    benchOrder: p.bench_order,
+    explanations: p.explanations,
+  };
+}
 
 function startersToPitchPlayers(
   players: SquadPlayerResponse[]
@@ -75,10 +90,13 @@ export default function SquadBuilder() {
     setSelectedPlayerId((prev) => (prev === playerId ? null : playerId));
   }
 
-  const selectedPlayer: SquadPlayerResponse | null = selectedPlayerId
+  const selectedRaw = selectedPlayerId
     ? (squadResult?.players.find((p) => p.id === selectedPlayerId) ??
       squadResult?.bench.find((p) => p.id === selectedPlayerId) ??
       null)
+    : null;
+  const selectedPlayer: DisplayPlayer | null = selectedRaw
+    ? squadPlayerToDisplay(selectedRaw)
     : null;
 
   return (
@@ -163,7 +181,7 @@ export default function SquadBuilder() {
                       .map((p) => (
                         <BenchCard
                           key={p.id}
-                          player={p}
+                          player={squadPlayerToDisplay(p)}
                           benchOrder={p.bench_order ?? 0}
                           isSelected={p.id === selectedPlayerId}
                           onClick={() => handlePlayerClick(p.id)}

@@ -3,6 +3,7 @@ interface SummaryBarProps {
   totalCost: number;
   remainingBudget: number;
   totalPredictedPoints: number;
+  gameweek?: number | null;
 }
 
 export default function SummaryBar({
@@ -10,24 +11,42 @@ export default function SummaryBar({
   totalCost,
   remainingBudget,
   totalPredictedPoints,
+  gameweek,
 }: SummaryBarProps) {
+  const isLineup = gameweek != null;
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 text-sm ring-1 ring-foreground/10">
       <Stat label="Formation" value={formation} />
-      <Divider />
-      <Stat label="Total Cost" value={`£${totalCost.toFixed(1)}m`} />
-      <Divider />
-      <Stat
-        label="Remaining"
-        value={`£${remainingBudget.toFixed(1)}m`}
-        muted={remainingBudget < 0}
-      />
-      <Divider />
-      <Stat
-        label="Predicted Pts"
-        value={totalPredictedPoints.toFixed(1)}
-        highlight
-      />
+      {isLineup ? (
+        <>
+          <Divider />
+          <Stat label="Gameweek" value={String(gameweek)} />
+          <Divider />
+          <Stat
+            label="Total GW Pts"
+            value={totalPredictedPoints.toFixed(1)}
+            highlight
+          />
+        </>
+      ) : (
+        <>
+          <Divider />
+          <Stat label="Total Cost" value={`£${totalCost.toFixed(1)}m`} />
+          <Divider />
+          <Stat
+            label="Remaining"
+            value={`£${remainingBudget.toFixed(1)}m`}
+            muted={remainingBudget < 0}
+          />
+          <Divider />
+          <Stat
+            label="Predicted Pts"
+            value={totalPredictedPoints.toFixed(1)}
+            highlight
+          />
+        </>
+      )}
     </div>
   );
 }

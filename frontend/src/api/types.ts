@@ -11,10 +11,8 @@ export interface PlayerListItem {
 // Shared types
 
 export interface Explanation {
-  feature: string;
-  importance: number;
-  explanation: string;
-  value?: number | string | null;
+  text: string;
+  category: string;
 }
 
 // ── UC1: Squad Generation ──────────────────────────────────────────
@@ -93,4 +91,20 @@ export interface LineupRecommendResponse {
   total_gw_points: number;
   starters: LineupStarterResponse[];
   bench: LineupBenchResponse[];
+}
+
+// ── Shared display type for components used by both UC1 and UC2 ───
+
+export interface DisplayPlayer {
+  id: string;
+  name: string;
+  position: string;
+  team: string;
+  points: number;
+  pointsLabel: string;
+  cost?: number;
+  isCaptain?: boolean;
+  isViceCaptain?: boolean;
+  benchOrder?: number | null;
+  explanations: Explanation[];
 }
