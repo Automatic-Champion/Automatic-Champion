@@ -1,5 +1,8 @@
 # OS
 .DS_Store
+.vscode/
+.claude/
+.idea/
 
 # IDE
 *.xml
@@ -30,3 +33,10 @@ build/
 # Data (large files — tracked via Git LFS or excluded)
 *.zip
 MASTER.md
+Base Data/
+
+# Weekly Model — archive and large files
+Weekly Model/Archive/
+Weekly Model/Base Data/
+Weekly Model/production/train.csv
+Weekly Model/production/test.csv
