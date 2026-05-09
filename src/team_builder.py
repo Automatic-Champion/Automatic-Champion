@@ -78,6 +78,7 @@ def _build_feature_cols(df: pd.DataFrame) -> list[str]:
     feature_cols = ["price_now"] + [
         col for col in numeric_cols
         if col != "price_now"
+        and "element_type" not in col
         and (any(col.startswith(f"{y}_years_past_") for y in (1, 2, 3))
              or col.startswith("momentum_"))
     ]
@@ -180,7 +181,7 @@ def _predict(df: pd.DataFrame, feature_cols: list[str], models_dir: str) -> pd.S
         else:
             pos_features = feature_cols
 
-        subset = df.loc[mask, pos_features]
+        subset = df.loc[mask, pos_features].fillna(0)
         if subset.empty:
             continue
         if hasattr(model, "predict"):

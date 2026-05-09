@@ -6,161 +6,196 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-try:
-    import joblib
-except ImportError:  # pragma: no cover - optional dependency
-    joblib = None
+POSITION_NAMES = {"GK": "goalkeeper", "DEF": "defender", "MID": "midfielder", "FWD": "forward"}
 
-from src.team_builder import MODEL_FILENAMES, _build_feature_cols
+# Stats to evaluate, grouped by category.
+# Each entry: (csv_column, display_name, category, positions_or_None)
+# positions_or_None=None means all positions.
+STAT_DEFS: list[tuple[str, str, str, set[str] | None]] = [
+    ("1_years_past_total_points", "total points last season", "performance", None),
+    ("1_years_past_goals_scored", "goals last season", "attacking", {"MID", "FWD", "DEF"}),
+    ("1_years_past_assists", "assists last season", "attacking", {"MID", "FWD", "DEF"}),
+    ("1_years_past_clean_sheets", "clean sheets last season", "defensive", {"GK", "DEF"}),
+    ("1_years_past_minutes", "minutes played last season", "reliability", None),
+    ("1_years_past_gw_saves", "saves last season", "defensive", {"GK"}),
+    ("1_years_past_bonus", "bonus points last season", "performance", None),
+    ("1_years_past_bps", "BPS last season", "performance", None),
+    ("1_years_past_ict_index", "ICT index last season", "performance", None),
+    ("1_years_past_goals_conceded", "goals conceded last season", "defensive", {"GK", "DEF"}),
+    ("1_years_past_creativity", "creativity last season", "attacking", {"MID", "FWD"}),
+    ("1_years_past_threat", "threat last season", "attacking", {"MID", "FWD"}),
+    ("1_years_past_influence", "influence last season", "performance", None),
+]
 
-FEATURE_EXPLANATIONS = {
-    "price_now": "Cost: a good fit for the budget while keeping quality high.",
-    "total_points": "Past points: shows how productive he was over a full season.",
-    "minutes": "Reliability: plays regularly, which increases chances of steady points.",
-    "gw_games_played": "Reliability: plays regularly, which increases chances of steady points.",
-    "gw_minutes_per_game": "Reliability: regular minutes increase steady points.",
-    "gw_saves": "Shot-stopping: more saves can add points for goalkeepers.",
-    "saves": "Shot-stopping: more saves can add points for goalkeepers.",
-    "clean_sheets": "Clean-sheet upside: helps defenders/goalkeepers score extra points.",
-    "cs": "Clean-sheet upside: helps defenders/goalkeepers score extra points.",
-    "bps": "Bonus potential: higher BPS often means more bonus points.",
-    "bonus": "Bonus potential: higher BPS often means more bonus points.",
-    "goals_scored": "Goal threat: more goals usually means more points.",
-    "goals": "Goal threat: more goals usually means more points.",
-    "assists": "Creative output: assists are a key source of points.",
-    "expected_goals": "Expected goals: indicates how often he gets good chances to score.",
-    "expected_assists": "Expected assists: indicates chance creation for teammates.",
-    "xg": "Expected goals: indicates how often he gets good chances to score.",
-    "xa": "Expected assists: indicates chance creation for teammates.",
-    "ict_index": "Overall involvement: combines influence, creativity and threat.",
-    "yellow_cards": "Discipline: fewer cards reduces point deductions.",
-    "red_cards": "Discipline: fewer cards reduces point deductions.",
-    "saves_per_90": "Keeper performance: more saves can add extra points.",
-    "goals_conceded": "Defence record: affects clean sheets and bonus points.",
-}
+# For goals_conceded, lower is better
+LOWER_IS_BETTER = {"1_years_past_goals_conceded"}
 
-MOMENTUM_EXPLANATIONS = {
-    "momentum_total_points": "Points trend: positive means improving, negative means declining",
-    "momentum_minutes": "Playing time trend: increasing minutes suggests growing role",
-    "momentum_ict_index": "Involvement trend: combines influence, creativity and threat changes",
-    "momentum_goals_scored": "Scoring trend: improving or declining goal output",
-}
+VALID_CATEGORIES = {"performance", "attacking", "defensive", "reliability", "value", "trending"}
 
-FEATURE_PRETTY = {
-    "gw_saves": "saves",
-    "gw_games_played": "games played",
-    "total_points": "total points",
-    "bps": "bonus points system (BPS)",
-    "ict_index": "ICT index",
-    "goals_scored": "goals scored",
-    "goals_conceded": "goals conceded",
-    "yellow_cards": "yellow cards",
-    "red_cards": "red cards",
-    "momentum_total_points": "points momentum",
-    "momentum_minutes": "minutes momentum",
-    "momentum_ict_index": "ICT momentum",
-    "momentum_goals_scored": "goals momentum",
-}
-
-POSITION_MODEL_CODE = {"GK": 1, "DEF": 2, "MID": 3, "FWD": 4}
+ELEMENT_TYPE_TO_POSITION = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 
-def _pretty_feature_name(feature: str) -> str:
-    if feature in FEATURE_PRETTY:
-        return FEATURE_PRETTY[feature]
-    return feature.replace("_", " ")
+def _ordinal(n: int) -> str:
+    if 11 <= (n % 100) <= 13:
+        return f"{n}th"
+    suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 
-_LAG_LABELS = {
-    "1_years_past_": "Last season",
-    "2_years_past_": "Two seasons ago",
-    "3_years_past_": "Three seasons ago",
-}
+def _prepare_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure position column is populated from element_type if needed."""
+    if df["position"].isna().all() and "element_type" in df.columns:
+        df = df.copy()
+        df["position"] = df["element_type"].map(ELEMENT_TYPE_TO_POSITION)
+    return df
 
 
-def _explain_feature(feature_name: str, value: object) -> str:
-    if feature_name == "price_now":
-        return FEATURE_EXPLANATIONS["price_now"]
-
-    for prefix, label in _LAG_LABELS.items():
-        if feature_name.startswith(prefix):
-            base = feature_name[len(prefix):]
-            pretty = _pretty_feature_name(base)
-            why = FEATURE_EXPLANATIONS.get(base) or FEATURE_EXPLANATIONS.get(pretty)
-            if why:
-                return f"{label} {pretty}: {value} — {why}"
-            return f"{label} {pretty}: {value} — This suggests steady returns over the season."
-
-    if feature_name in MOMENTUM_EXPLANATIONS:
-        return MOMENTUM_EXPLANATIONS[feature_name]
-
-    key = feature_name.lower()
-    why = FEATURE_EXPLANATIONS.get(key)
-    if why:
-        return why
-
-    return "This stat suggests consistent performance in past seasons."
+def _compute_position_stats(df: pd.DataFrame, position: str) -> pd.DataFrame:
+    """Filter df to the given position."""
+    return df[df["position"] == position].copy()
 
 
 def _explain_selection_preloaded(
     player_id: str,
     position: str,
     df: pd.DataFrame,
-    models: dict[str, object],
+    pos_df: pd.DataFrame,
     top_k: int = 3,
 ) -> list[dict]:
-    """Return top-k feature explanations using pre-loaded DataFrame and models."""
-    model = models.get(position)
-    if model is None:
-        return []
-
-    if hasattr(model, "feature_importances_"):
-        importances_array = model.feature_importances_
-    elif hasattr(model, "coef_"):
-        importances_array = np.abs(model.coef_)
-    else:
-        return []
-
-    row = df[df["id"].astype(str) == str(player_id)]
+    """Return top-k player-specific explanations using stat comparisons."""
+    row = df[df["id"] == str(player_id)]
     if row.empty:
         return []
     row = row.iloc[0]
 
-    # Get feature columns — use model's feature_names_in_ if available, else detect
-    if hasattr(model, "feature_names_in_"):
-        feature_cols = list(model.feature_names_in_)
-    else:
-        try:
-            feature_cols = _build_feature_cols(df)
-        except ValueError:
-            return []
-
-    importances = importances_array
-    if len(importances) != len(feature_cols):
+    pos_name = POSITION_NAMES.get(position, position.lower())
+    pos_count = len(pos_df)
+    if pos_count == 0:
         return []
 
-    # Pair features with importances, sort descending
-    feat_imp = sorted(
-        zip(feature_cols, importances),
-        key=lambda x: x[1],
-        reverse=True,
-    )
+    # Compute how impressive each stat is for this player
+    candidates: list[tuple[float, dict]] = []
 
-    results = []
-    for feature, importance in feat_imp[:top_k]:
-        raw_value = row.get(feature)
-        # Convert numpy types to native Python for JSON serialization
-        if hasattr(raw_value, "item"):
-            value = raw_value.item()
+    for col, display_name, category, positions in STAT_DEFS:
+        if positions is not None and position not in positions:
+            continue
+        if col not in df.columns or col not in pos_df.columns:
+            continue
+
+        val = row.get(col)
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            continue
+        if hasattr(val, "item"):
+            val = val.item()
+        if val == 0:
+            continue
+
+        pos_values = pos_df[col].dropna()
+        if len(pos_values) < 2:
+            continue
+
+        avg = pos_values.mean()
+        if col in LOWER_IS_BETTER:
+            rank = max(1, int((pos_values <= val).sum()))
+            percentile = rank / len(pos_values)
         else:
-            value = raw_value
-        results.append({
-            "feature": feature,
-            "value": value,
-            "importance": float(importance),
-            "explanation": _explain_feature(feature, value),
-        })
-    return results
+            rank = max(1, int((pos_values >= val).sum()))
+            percentile = rank / len(pos_values)
+
+        # Score: lower percentile ratio = more impressive
+        score = percentile
+
+        # Build the explanation text
+        int_val = int(round(val))
+        int_avg = int(round(avg))
+
+        if col == "1_years_past_total_points":
+            text = f"{int_val} {display_name} — ranks {_ordinal(rank)} among {pos_name}s (avg: {int_avg})"
+        elif col == "1_years_past_goals_scored":
+            pct = max(1, int(round(percentile * 100)))
+            text = f"{int_val} {display_name} — top {pct}% of {pos_name}s for goal threat"
+        elif col == "1_years_past_assists":
+            pct = max(1, int(round(percentile * 100)))
+            text = f"{int_val} {display_name} — top {pct}% of {pos_name}s for creativity"
+        elif col == "1_years_past_clean_sheets":
+            text = f"{int_val} {display_name} — ranks {_ordinal(rank)} among {pos_name}s (avg: {int_avg})"
+        elif col == "1_years_past_minutes":
+            text = f"Played {int_val:,} minutes last season — one of the most reliable starters at {pos_name}"
+        elif col == "1_years_past_gw_saves":
+            pct = max(1, int(round(percentile * 100)))
+            text = f"{int_val} {display_name} — top {pct}% among goalkeepers"
+        elif col == "1_years_past_goals_conceded":
+            text = f"Only {int_val} {display_name} — ranks {_ordinal(rank)} among {pos_name}s (avg: {int_avg})"
+        elif col in ("1_years_past_bonus", "1_years_past_bps"):
+            text = f"{int_val} {display_name} — ranks {_ordinal(rank)} among {pos_name}s (avg: {int_avg})"
+        elif col == "1_years_past_ict_index":
+            text = f"ICT index of {val:.1f} last season — ranks {_ordinal(rank)} among {pos_name}s"
+        elif col in ("1_years_past_creativity", "1_years_past_threat", "1_years_past_influence"):
+            short_name = display_name.replace(" last season", "")
+            text = f"{short_name.capitalize()} score of {val:.1f} — ranks {_ordinal(rank)} among {pos_name}s"
+        else:
+            text = f"{int_val} {display_name} — ranks {_ordinal(rank)} among {pos_name}s (avg: {int_avg})"
+
+        candidates.append((score, {"text": text, "category": category}))
+
+    # Sort by score (lower = more impressive)
+    candidates.sort(key=lambda x: x[0])
+
+    # Pick top stats, leaving room for value explanation
+    selected = []
+    seen_categories: set[str] = set()
+    for _score, exp in candidates:
+        # Prefer variety in categories
+        if exp["category"] in seen_categories and len(selected) < top_k - 1:
+            continue
+        selected.append(exp)
+        seen_categories.add(exp["category"])
+        if len(selected) >= top_k - 1:
+            break
+
+    # If we didn't get enough with diversity, fill without the constraint
+    if len(selected) < top_k - 1:
+        for _score, exp in candidates:
+            if exp not in selected:
+                selected.append(exp)
+                if len(selected) >= top_k - 1:
+                    break
+
+    # Always add value explanation
+    cost = row.get("price_now")
+    pred_points = row.get("total_points")
+    if cost is not None and pred_points is not None:
+        if hasattr(cost, "item"):
+            cost = cost.item()
+        if hasattr(pred_points, "item"):
+            pred_points = pred_points.item()
+        cost_m = cost / 10.0 if cost > 30 else cost  # handle raw price (70 = £7.0m)
+        if cost_m > 0:
+            if pred_points < 20:
+                # Low historical points — value explanation isn't meaningful
+                value_text = f"Budget-friendly option at £{cost_m:.1f}m — selected based on model projection."
+            else:
+                ppm = pred_points / cost_m
+                # Position average ppm
+                pos_costs = pos_df["price_now"].dropna()
+                pos_points = pos_df["total_points"].dropna()
+                if len(pos_costs) > 0 and len(pos_points) > 0:
+                    avg_cost = pos_costs.mean()
+                    avg_cost_m = avg_cost / 10.0 if avg_cost > 30 else avg_cost
+                    avg_points = pos_points.mean()
+                    avg_ppm = avg_points / avg_cost_m if avg_cost_m > 0 else 0
+                    value_text = (
+                        f"At £{cost_m:.1f}m, scored {int(round(pred_points))} points last season — "
+                        f"{ppm:.1f} pts/£m (position avg: {avg_ppm:.1f})"
+                    )
+                else:
+                    value_text = f"At £{cost_m:.1f}m, scored {int(round(pred_points))} points last season"
+            selected.append({"text": value_text, "category": "value"})
+
+    if not selected:
+        return [{"text": "Limited historical data available — selected based on model projection.", "category": "performance"}]
+
+    return selected[:top_k]
 
 
 def explain_selection(
@@ -170,37 +205,25 @@ def explain_selection(
     models_dir: str,
     top_k: int = 3,
 ) -> list[dict]:
-    """Return top-k feature explanations for why a player was selected.
+    """Return top-k player-specific explanations for why a player was selected.
 
-    Each item: {"feature": str, "value": any, "importance": float, "explanation": str}
+    Each item: {"text": str, "category": str}
     """
-    if joblib is None:
-        warnings.warn("joblib is required to load models for explanations")
-        return []
-
-    model_filename = MODEL_FILENAMES.get(position)
-    if model_filename is None:
-        return []
-
-    model_path = Path(models_dir) / model_filename
-    if not model_path.exists():
-        warnings.warn(f"Model file not found: {model_path}")
-        return []
-
-    model = joblib.load(model_path)
-
     data_file = Path(data_path)
     if not data_file.exists():
         return []
 
     df = pd.read_csv(data_file)
-    models = {position: model}
+    df = df[df["id"].notna()]
+    df["id"] = df["id"].astype(float).astype(int).astype(str)
+    df = _prepare_df(df)
+    pos_df = _compute_position_stats(df, position)
 
     return _explain_selection_preloaded(
         player_id=player_id,
         position=position,
         df=df,
-        models=models,
+        pos_df=pos_df,
         top_k=top_k,
     )
 
@@ -213,29 +236,22 @@ def explain_squad(
 ) -> dict[str, list[dict]]:
     """Return explanations for each player in the squad.
 
-    Returns dict mapping player_id -> list of feature explanations.
+    Returns dict mapping player_id -> list of explanations.
     """
-    if joblib is None:
-        warnings.warn("joblib is required to load models for explanations")
-        return {str(player["id"]): [] for player in players}
-
     data_file = Path(data_path)
     if not data_file.exists():
         return {str(player["id"]): [] for player in players}
 
     df = pd.read_csv(data_file)
+    df = df[df["id"].notna()]
+    df["id"] = df["id"].astype(float).astype(int).astype(str)
+    df = _prepare_df(df)
 
-    # Load each needed model once
+    # Pre-compute position DataFrames
     needed_positions = {player["position"] for player in players}
-    models: dict[str, object] = {}
+    pos_dfs: dict[str, pd.DataFrame] = {}
     for position in needed_positions:
-        model_filename = MODEL_FILENAMES.get(position)
-        if model_filename is None:
-            continue
-        model_path = Path(models_dir) / model_filename
-        if not model_path.exists():
-            continue
-        models[position] = joblib.load(model_path)
+        pos_dfs[position] = _compute_position_stats(df, position)
 
     result: dict[str, list[dict]] = {}
     for player in players:
@@ -245,7 +261,7 @@ def explain_squad(
             player_id=pid,
             position=position,
             df=df,
-            models=models,
+            pos_df=pos_dfs.get(position, pd.DataFrame()),
             top_k=top_k,
         )
     return result
