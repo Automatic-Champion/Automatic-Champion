@@ -18,7 +18,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const initialTheme = savedTheme || "light";
+    const initialTheme = savedTheme || "dark";
 
     setTheme(initialTheme);
     setIsInitialized(true);

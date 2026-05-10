@@ -1,7 +1,24 @@
 export default function PitchSVG() {
-  // Stripe rows for realistic grass effect
+  // Stripe rows for realistic grass effect — more vibrant greens
   const stripeCount = 14;
   const stripeHeight = 1050 / stripeCount;
+
+  // Generate crowd dots (random-looking but deterministic)
+  const crowdDotsTop: { cx: number; cy: number; r: number }[] = [];
+  const crowdDotsBottom: { cx: number; cy: number; r: number }[] = [];
+  for (let i = 0; i < 60; i++) {
+    const seed = i * 17 + 7;
+    crowdDotsTop.push({
+      cx: 40 + (seed * 13) % 600,
+      cy: 5 + (seed * 7) % 30,
+      r: 2.0 + (seed % 3) * 0.8,
+    });
+    crowdDotsBottom.push({
+      cx: 40 + ((seed + 100) * 11) % 600,
+      cy: 1020 + ((seed + 50) * 7) % 25,
+      r: 2.0 + ((seed + 3) % 3) * 0.8,
+    });
+  }
 
   return (
     <svg
@@ -9,7 +26,7 @@ export default function PitchSVG() {
       className="w-full h-auto"
       preserveAspectRatio="xMidYMid meet"
     >
-      {/* Grass stripes */}
+      {/* Grass stripes — vibrant */}
       {Array.from({ length: stripeCount }, (_, i) => (
         <rect
           key={i}
@@ -17,9 +34,42 @@ export default function PitchSVG() {
           y={i * stripeHeight}
           width={680}
           height={stripeHeight}
-          fill={i % 2 === 0 ? "#2d8a4e" : "#34a058"}
+          fill={i % 2 === 0 ? "#1f8a42" : "#25a34f"}
         />
       ))}
+
+      {/* Crowd dots — top */}
+      {crowdDotsTop.map((dot, i) => (
+        <circle
+          key={`ct-${i}`}
+          cx={dot.cx}
+          cy={dot.cy}
+          r={dot.r}
+          fill="white"
+          opacity={0.15}
+        />
+      ))}
+
+      {/* Crowd dots — bottom */}
+      {crowdDotsBottom.map((dot, i) => (
+        <circle
+          key={`cb-${i}`}
+          cx={dot.cx}
+          cy={dot.cy}
+          r={dot.r}
+          fill="white"
+          opacity={0.15}
+        />
+      ))}
+
+      {/* Vignette overlay — dark edges */}
+      <defs>
+        <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stopColor="transparent" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.1" />
+        </radialGradient>
+      </defs>
+      <rect x={0} y={0} width={680} height={1050} fill="url(#vignette)" />
 
       {/* Outer boundary */}
       <rect
@@ -55,7 +105,7 @@ export default function PitchSVG() {
       {/* Center spot */}
       <circle cx={340} cy={525} r={4} fill="white" />
 
-      {/* ── Top penalty area (attackers' end) ── */}
+      {/* Top penalty area (attackers' end) */}
       <rect
         x={148}
         y={40}
@@ -85,7 +135,7 @@ export default function PitchSVG() {
         strokeWidth={2}
       />
 
-      {/* ── Bottom penalty area (goalkeeper's end) ── */}
+      {/* Bottom penalty area (goalkeeper's end) */}
       <rect
         x={148}
         y={845}
