@@ -1,4 +1,4 @@
-import { X, TrendingUp, Swords, Shield, Clock, Coins, ArrowUpRight, Sparkles } from "lucide-react";
+import { X, TrendingUp, Swords, Shield, Clock, Coins, ArrowUpRight } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,12 +77,6 @@ function ExplanationList({ player }: { player: DisplayPlayer }) {
           })}
         </ul>
       )}
-
-      {/* Powered by AI badge */}
-      <div className="flex items-center justify-center gap-1.5 pt-4 border-t border-border/50">
-        <Sparkles className="size-3 text-amber-500" />
-        <span className="text-[11px] text-muted-foreground">Powered by AI</span>
-      </div>
     </div>
   );
 }

@@ -10,7 +10,7 @@ interface FormationSlot {
  */
 function spreadX(count: number): number[] {
   if (count === 1) return [50];
-  const margin = 15;
+  const margin = count >= 5 ? 10 : 15;
   const step = (100 - 2 * margin) / (count - 1);
   return Array.from({ length: count }, (_, i) => margin + i * step);
 }

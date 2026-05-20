@@ -21,7 +21,7 @@ const POSITION_COLORS: Record<string, { gradient: string; jersey: string; glow: 
 
 function JerseyIcon({ color }: { color: string }) {
   return (
-    <svg width="28" height="22" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="40" height="32" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M6 0L0 3V7L2 7.5V16H18V7.5L20 7V3L14 0H12.5C12.5 1.38 11.38 2.5 10 2.5C8.62 2.5 7.5 1.38 7.5 0H6Z"
         fill={color}
@@ -49,9 +49,6 @@ export default function PlayerNode({
   const prefersReduced = useReducedMotion();
   const colors = POSITION_COLORS[position] ?? POSITION_COLORS.MID;
 
-  const displayName =
-    name.length > 12 ? name.slice(0, 11) + "\u2026" : name;
-
   return (
     <motion.button
       type="button"
@@ -67,7 +64,7 @@ export default function PlayerNode({
       {/* Mini card shape */}
       <div
         className={cn(
-          "relative flex flex-col items-center w-[56px] h-[68px] rounded-lg p-0.5 transition-shadow duration-200",
+          "relative flex flex-col items-center w-[88px] h-[100px] rounded-lg p-0.5 transition-shadow duration-200",
           `bg-gradient-to-b ${colors.gradient}`,
           `group-hover:shadow-lg group-hover:${colors.glow}`
         )}
@@ -76,21 +73,21 @@ export default function PlayerNode({
         }}
       >
         {/* Inner card */}
-        <div className="flex flex-col items-center justify-between w-full h-full rounded-md bg-gray-900/80 backdrop-blur-sm px-1 py-1.5">
+        <div className="flex flex-col items-center justify-between w-full h-full rounded-md bg-gray-900/80 backdrop-blur-sm px-1.5 py-2">
           {/* Jersey icon */}
           <JerseyIcon color={colors.jersey} />
 
-          {/* Player surname */}
+          {/* Player name */}
           <span
-            className="text-[9px] font-semibold leading-none text-white text-center w-full truncate px-0.5"
+            className="text-[11px] font-bold leading-tight text-white text-center w-full line-clamp-2 px-0.5"
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
           >
-            {displayName}
+            {name}
           </span>
 
           {/* Points pill */}
           <motion.span
-            className="px-1 py-0 rounded-full bg-amber-500/90 text-[9px] font-bold text-white leading-tight"
+            className="px-1.5 py-0.5 rounded-full bg-amber-500/90 text-[11px] font-bold text-white leading-tight"
             whileHover={prefersReduced ? undefined : { y: -1 }}
           >
             {points.toFixed(1)}
@@ -100,7 +97,7 @@ export default function PlayerNode({
         {/* Captain badge — gold diamond */}
         {(isCaptain || isViceCaptain) && (
           <span
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center text-[8px] font-black text-gray-900"
+            className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center text-[10px] font-black text-gray-900"
             style={{
               background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
               clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
@@ -113,7 +110,7 @@ export default function PlayerNode({
 
       {/* Team abbreviation below card */}
       <span
-        className="text-[9px] text-gray-300 leading-none mt-0.5"
+        className="text-[10px] text-gray-300 leading-none mt-1"
         style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
       >
         {team}
