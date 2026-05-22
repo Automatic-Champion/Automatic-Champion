@@ -250,10 +250,9 @@ def predict_gameweek_points(
         latest = scoped.drop_duplicates(subset="element", keep="last")
         rows_by_element = {int(r["element"]): r for _, r in latest.iterrows()}
 
-    # FPL API data for the placeholder fallback path.
-    fpl_players, fpl_by_name, fpl_list = _fetch_fpl_for_placeholder(gameweek)
-
     predictions: dict[str, float] = {}
+    fallback_players: list[dict] = []
+
     for player in squad:
         pid = str(player["id"])
         pos = player.get("position", "")
@@ -287,6 +286,15 @@ def predict_gameweek_points(
                     )
 
         if not used_model:
+            fallback_players.append(player)
+
+    # Lazy FPL fetch — only call the FPL API when at least one player needs
+    # the placeholder chain. When V8 handles every player (the normal case),
+    # this skips two network round-trips and stays resilient to FPL outages.
+    if fallback_players:
+        fpl_players, fpl_by_name, fpl_list = _fetch_fpl_for_placeholder(gameweek)
+        for player in fallback_players:
+            pid = str(player["id"])
             predictions[pid] = _placeholder_predict(player, fpl_players, fpl_by_name, fpl_list)
 
     return predictions
