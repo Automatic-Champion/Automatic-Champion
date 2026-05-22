@@ -104,13 +104,19 @@ _MOCK_FPL_EXTENDED = {
 
 class TestPredictorVersion:
     def test_version_string(self):
-        assert PREDICTOR_VERSION == "placeholder-v1"
+        assert PREDICTOR_VERSION == "V8 model"
 
 
+# When V8 is unavailable (e.g. model files missing or catboost not installed),
+# the predictor degrades to the placeholder chain (ep_next → ppg → pred/38).
+# The tests below exercise that fallback path by patching the V8 loaders to
+# return None.
+@patch("src.gameweek_predictor._load_feature_table", return_value=None)
+@patch("src.gameweek_predictor._load_models", return_value=None)
 class TestWithFPLData:
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_PLAYERS)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_ep_next_used_when_available(self, _mock_gw, _mock_players):
+    def test_ep_next_used_when_available(self, _mock_gw, _mock_players, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad)
 
@@ -119,7 +125,7 @@ class TestWithFPLData:
 
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_PLAYERS)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_points_per_game_fallback(self, _mock_gw, _mock_players):
+    def test_points_per_game_fallback(self, _mock_gw, _mock_players, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad)
 
@@ -128,7 +134,7 @@ class TestWithFPLData:
 
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_PLAYERS)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_unmatched_falls_back_to_pred(self, _mock_gw, _mock_players):
+    def test_unmatched_falls_back_to_pred(self, _mock_gw, _mock_players, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad)
 
@@ -137,7 +143,7 @@ class TestWithFPLData:
 
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_PLAYERS)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_explicit_gameweek(self, _mock_gw, _mock_players):
+    def test_explicit_gameweek(self, _mock_gw, _mock_players, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad, gameweek=15)
 
@@ -146,9 +152,11 @@ class TestWithFPLData:
         assert len(preds) == 3
 
 
+@patch("src.gameweek_predictor._load_feature_table", return_value=None)
+@patch("src.gameweek_predictor._load_models", return_value=None)
 class TestFPLAPIFailure:
     @patch("src.gameweek_predictor.get_current_gameweek", side_effect=FPLAPIError("down"))
-    def test_all_fallback_on_api_error(self, _mock_gw):
+    def test_all_fallback_on_api_error(self, _mock_gw, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad)
 
@@ -157,7 +165,7 @@ class TestFPLAPIFailure:
             assert preds[pid] == pytest.approx(player["pred"] / 38.0)
 
     @patch("src.gameweek_predictor.get_current_gameweek", side_effect=ConnectionError("no network"))
-    def test_all_fallback_on_network_error(self, _mock_gw):
+    def test_all_fallback_on_network_error(self, _mock_gw, _no_models, _no_table):
         squad = _make_squad()
         preds = predict_gameweek_points(squad)
 
@@ -166,7 +174,7 @@ class TestFPLAPIFailure:
             assert preds[pid] == pytest.approx(player["pred"] / 38.0)
 
     @patch("src.gameweek_predictor.get_current_gameweek", side_effect=TypeError("programming bug"))
-    def test_non_network_exception_bubbles_up(self, _mock_gw):
+    def test_non_network_exception_bubbles_up(self, _mock_gw, _no_models, _no_table):
         """TypeError (a programming bug) must NOT be silently swallowed."""
         squad = _make_squad()
         with pytest.raises(TypeError, match="programming bug"):
@@ -269,12 +277,17 @@ class TestNameMatching:
         assert match["id"] == 2
 
 
+@patch("src.gameweek_predictor._load_feature_table", return_value=None)
+@patch("src.gameweek_predictor._load_models", return_value=None)
 class TestNameMatchingIntegration:
-    """End-to-end tests: verify matched players get FPL predictions, not fallback."""
+    """End-to-end tests: verify matched players get FPL predictions when the
+    V8 model path is unavailable (fallback chain)."""
 
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_EXTENDED)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_nicolas_jackson_gets_fpl_prediction(self, _mock_gw, _mock_players):
+    def test_nicolas_jackson_gets_fpl_prediction(
+        self, _mock_gw, _mock_players, _no_models, _no_table
+    ):
         squad = [
             {"id": "10", "name": "Nicolas Jackson", "position": "FWD", "team": "Chelsea", "pred": 100.0},
         ]
@@ -284,7 +297,9 @@ class TestNameMatchingIntegration:
 
     @patch("src.gameweek_predictor.get_player_data", return_value=_MOCK_FPL_EXTENDED)
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
-    def test_bernardo_silva_gets_fpl_prediction(self, _mock_gw, _mock_players):
+    def test_bernardo_silva_gets_fpl_prediction(
+        self, _mock_gw, _mock_players, _no_models, _no_table
+    ):
         squad = [
             {"id": "11", "name": "Bernardo Silva", "position": "MID", "team": "Man City", "pred": 90.0},
         ]

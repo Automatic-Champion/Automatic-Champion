@@ -20,7 +20,7 @@ router = APIRouter(prefix="/lineup", tags=["lineup"])
 @router.post("/recommend", response_model=LineupRecommendResponse)
 def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse:
     from src.fpl_api import get_current_gameweek
-    from src.gameweek_predictor import predict_gameweek_points
+    from src.gameweek_predictor import PREDICTOR_VERSION, predict_gameweek_points
     from src.lineup_optimizer import optimize_lineup
 
     # Convert request models to plain dicts for src/ functions
@@ -92,4 +92,5 @@ def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse
         total_gw_points=result["total_gw_points"],
         starters=starters,
         bench=bench,
+        predictor_version=PREDICTOR_VERSION,
     )

@@ -175,3 +175,4 @@ class LineupRecommendResponse(BaseModel):
     total_gw_points: float
     starters: list[LineupStarterResponse]
     bench: list[LineupBenchResponse]
+    predictor_version: str

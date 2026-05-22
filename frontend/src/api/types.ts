@@ -91,6 +91,7 @@ export interface LineupRecommendResponse {
   total_gw_points: number;
   starters: LineupStarterResponse[];
   bench: LineupBenchResponse[];
+  predictor_version: string;
 }
 
 // ── Shared display type for components used by both UC1 and UC2 ───

@@ -350,6 +350,13 @@ export default function LineupAdvisor() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: dur(0.5), ease: [...EASE_OUT_EXPO] }}
                 >
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      Predictions powered by{" "}
+                      <span className="font-mono">{result.predictor_version}</span>
+                    </span>
+                  </div>
                   <SummaryBar
                     formation={result.formation}
                     totalCost={0}
