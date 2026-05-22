@@ -277,6 +277,78 @@ class TestNameMatching:
         assert match["id"] == 2
 
 
+class TestV8RealModel:
+    """End-to-end tests against the real V8 CatBoost models loaded from disk.
+
+    Unlike the other test classes, these DO NOT mock the V8 loaders — they
+    load the actual model_{POS}.cbm files from Weekly Model/production/models/
+    and the actual test.csv feature table. Slightly slower (~1–2s on first
+    test as models load; cached after via module-level globals).
+
+    These tests catch a class of bug the mocked tests can't: a silent break in
+    the V8 inference path where the predictor falls back to the placeholder
+    without anyone noticing.
+    """
+
+    # FPL API is mocked to {} (no players) so the test doesn't depend on
+    # network access. V8 path doesn't need FPL data; placeholder fallback
+    # path will see no matches and return pred/38.
+    @patch("src.gameweek_predictor.get_player_data", return_value={})
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_v8_predicts_for_known_player(self, _mock_gw, _mock_players):
+        """V8 returns a real prediction (not the placeholder fallback) for a
+        squad player whose element ID is in the feature table."""
+        # Salah — element 328, MID, definitely present in 2024-25 test.csv
+        squad = [
+            {"id": "328", "name": "Mohamed Salah", "position": "MID",
+             "team": "Liverpool", "pred": 380.0},
+        ]
+        preds = predict_gameweek_points(squad, gameweek=10)
+
+        result = preds["328"]
+        assert isinstance(result, float)
+        # MID clip range
+        assert -4.0 <= result <= 25.0
+        # If V8 silently broke and fell back to placeholder, result would
+        # equal 380/38 = 10.0. A non-zero gap proves V8 actually ran.
+        placeholder_fallback = 380.0 / 38.0
+        assert abs(result - placeholder_fallback) > 0.1, (
+            f"V8 returned {result}, suspiciously close to placeholder "
+            f"fallback {placeholder_fallback} — V8 inference path may be broken"
+        )
+
+    @patch("src.gameweek_predictor.get_player_data", return_value={})
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_v8_respects_gameweek(self, _mock_gw, _mock_players):
+        """Different gameweeks should yield different predictions — proves
+        the feature-table scoping by GW actually works."""
+        squad = [
+            {"id": "328", "name": "Mohamed Salah", "position": "MID",
+             "team": "Liverpool", "pred": 380.0},
+        ]
+        early = predict_gameweek_points(squad, gameweek=5)["328"]
+        late = predict_gameweek_points(squad, gameweek=35)["328"]
+
+        assert early != late, (
+            f"Predictions at GW=5 ({early}) and GW=35 ({late}) are identical "
+            "— gameweek scoping is broken (predictor likely using the latest "
+            "row regardless of requested GW)"
+        )
+
+    @patch("src.gameweek_predictor.get_player_data", return_value={})
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_v8_falls_back_for_unknown_player(self, _mock_gw, _mock_players):
+        """A player with an element ID not in the feature table must fall
+        back through the placeholder chain. With FPL mocked to {} (no
+        matches), the only remaining fallback is pred/38."""
+        squad = [
+            {"id": "999999", "name": "Made Up Player", "position": "MID",
+             "team": "Nobody", "pred": 76.0},
+        ]
+        preds = predict_gameweek_points(squad, gameweek=10)
+        assert preds["999999"] == pytest.approx(76.0 / 38.0)
+
+
 @patch("src.gameweek_predictor._load_feature_table", return_value=None)
 @patch("src.gameweek_predictor._load_models", return_value=None)
 class TestNameMatchingIntegration:
