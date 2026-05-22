@@ -9,6 +9,7 @@ import ExplanationPanel from "../components/squad/ExplanationPanel";
 import SummaryBar from "../components/squad/SummaryBar";
 import PitchSVG from "../components/pitch/PitchSVG";
 import { fetchPlayers, generateSquad } from "../api/client";
+import { useSquad } from "../context/SquadContext";
 import type {
   PlayerListItem,
   SquadGenerateRequest,
@@ -114,9 +115,7 @@ export default function SquadBuilder() {
   const [playersError, setPlayersError] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [squadResult, setSquadResult] = useState<SquadGenerateResponse | null>(
-    null
-  );
+  const { squad: squadResult, setSquad: setSquadResult } = useSquad();
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
@@ -139,7 +138,6 @@ export default function SquadBuilder() {
     try {
       const result = await generateSquad(request);
       setSquadResult(result);
-      localStorage.setItem("lastSquad", JSON.stringify(result));
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
         setError(

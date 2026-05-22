@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { Loader2 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -11,8 +11,8 @@ import SummaryBar from "../components/squad/SummaryBar";
 import PitchSVG from "../components/pitch/PitchSVG";
 import { recommendLineup } from "../api/client";
 import { squadToLineupInput } from "../api/helpers";
+import { useSquad } from "../context/SquadContext";
 import type {
-  SquadGenerateResponse,
   LineupRecommendResponse,
   DisplayPlayer,
 } from "../api/types";
@@ -107,7 +107,7 @@ function SkeletonBench() {
 }
 
 export default function LineupAdvisor() {
-  const [squad, setSquad] = useState<SquadGenerateResponse | null>(null);
+  const { squad } = useSquad();
   const [formation, setFormation] = useState("Auto (best)");
   const [gameweek, setGameweek] = useState("Auto-detect");
   const [isLoading, setIsLoading] = useState(false);
@@ -117,17 +117,6 @@ export default function LineupAdvisor() {
 
   const prefersReduced = useReducedMotion();
   const dur = (d: number) => (prefersReduced ? 0 : d);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("lastSquad");
-    if (stored) {
-      try {
-        setSquad(JSON.parse(stored) as SquadGenerateResponse);
-      } catch {
-        setSquad(null);
-      }
-    }
-  }, []);
 
   async function handleRecommend() {
     if (!squad) return;
