@@ -13,7 +13,6 @@ import { useSquad } from "../context/SquadContext";
 import type {
   PlayerListItem,
   SquadGenerateRequest,
-  SquadGenerateResponse,
   SquadPlayerResponse,
   DisplayPlayer,
 } from "../api/types";
