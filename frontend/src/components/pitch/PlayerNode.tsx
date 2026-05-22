@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getKitUrl } from "@/lib/teamKits";
 
 export interface PlayerNodeProps {
   name: string;
@@ -48,6 +49,7 @@ export default function PlayerNode({
 }: PlayerNodeProps) {
   const prefersReduced = useReducedMotion();
   const colors = POSITION_COLORS[position] ?? POSITION_COLORS.MID;
+  const kitUrl = getKitUrl(team);
 
   return (
     <motion.button
@@ -64,7 +66,7 @@ export default function PlayerNode({
       {/* Mini card shape */}
       <div
         className={cn(
-          "relative flex flex-col items-center w-[88px] h-[100px] rounded-lg p-0.5 transition-shadow duration-200",
+          "relative flex flex-col items-center w-[88px] h-[116px] rounded-lg p-0.5 transition-shadow duration-200",
           `bg-gradient-to-b ${colors.gradient}`,
           `group-hover:shadow-lg group-hover:${colors.glow}`
         )}
@@ -74,8 +76,17 @@ export default function PlayerNode({
       >
         {/* Inner card */}
         <div className="flex flex-col items-center justify-between w-full h-full rounded-md bg-gray-900/80 backdrop-blur-sm px-1.5 py-2">
-          {/* Jersey icon */}
-          <JerseyIcon color={colors.jersey} />
+          {/* Kit image (fallback to jersey SVG if no kit available) */}
+          {kitUrl ? (
+            <img
+              src={kitUrl}
+              alt={team}
+              loading="lazy"
+              className="w-9 h-9 object-contain"
+            />
+          ) : (
+            <JerseyIcon color={colors.jersey} />
+          )}
 
           {/* Player name */}
           <span

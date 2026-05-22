@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { DisplayPlayer } from "@/api/types";
+import { getKitUrl } from "@/lib/teamKits";
 
 interface BenchCardProps {
   player: DisplayPlayer;
@@ -37,6 +38,7 @@ export default function BenchCard({
   void _benchOrder; // used for rendering order
   const prefersReduced = useReducedMotion();
   const colors = POSITION_COLORS[player.position] ?? POSITION_COLORS.MID;
+  const kitUrl = getKitUrl(player.team);
 
   return (
     <motion.div
@@ -68,9 +70,18 @@ export default function BenchCard({
       />
 
       <div className="relative flex items-center gap-3">
-        {/* Jersey icon instead of number */}
+        {/* Kit image (fallback to jersey SVG if no kit available) */}
         <span className="flex size-7 shrink-0 items-center justify-center">
-          <JerseyIconSmall color={colors.jersey} />
+          {kitUrl ? (
+            <img
+              src={kitUrl}
+              alt={player.team}
+              loading="lazy"
+              className="w-7 h-7 object-contain"
+            />
+          ) : (
+            <JerseyIconSmall color={colors.jersey} />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{player.name}</p>
