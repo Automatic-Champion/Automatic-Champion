@@ -1,3 +1,4 @@
+import { auth } from "../lib/firebase";
 import type {
   SquadGenerateRequest,
   SquadGenerateResponse,
@@ -8,8 +9,39 @@ import type {
 
 const API_BASE = "http://localhost:8000";
 
+async function buildHeaders(extra?: HeadersInit): Promise<Headers> {
+  const headers = new Headers(extra);
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      headers.set("Authorization", `Bearer ${token}`);
+    } catch {
+      // If we can't get a token, fall through; backend will return 401.
+    }
+  }
+  return headers;
+}
+
+function handleUnauthorized(status: number) {
+  if (status === 401 && typeof window !== "undefined") {
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+  }
+}
+
+async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const headers = await buildHeaders(init.headers);
+  const res = await fetch(input, { ...init, headers });
+  if (res.status === 401) {
+    handleUnauthorized(res.status);
+  }
+  return res;
+}
+
 export async function fetchPlayers(): Promise<PlayerListItem[]> {
-  const res = await fetch(`${API_BASE}/players`);
+  const res = await apiFetch(`${API_BASE}/players`);
 
   if (!res.ok) {
     throw new Error(`Failed to fetch players (${res.status})`);
@@ -21,7 +53,7 @@ export async function fetchPlayers(): Promise<PlayerListItem[]> {
 export async function generateSquad(
   req: SquadGenerateRequest,
 ): Promise<SquadGenerateResponse> {
-  const res = await fetch(`${API_BASE}/squad/generate`, {
+  const res = await apiFetch(`${API_BASE}/squad/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -38,7 +70,7 @@ export async function generateSquad(
 export async function recommendLineup(
   req: LineupRecommendRequest,
 ): Promise<LineupRecommendResponse> {
-  const res = await fetch(`${API_BASE}/lineup/recommend`, {
+  const res = await apiFetch(`${API_BASE}/lineup/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),

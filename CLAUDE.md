@@ -55,8 +55,8 @@ visuals/          Generated charts and metrics CSVs
 - **ML:** scikit-learn, XGBoost, LightGBM (position-specific models)
 - **Optimization:** Google OR-Tools (SCIP/CBC solver) — Integer Linear Programming
 - **Backend:** FastAPI + SQLAlchemy + PostgreSQL
-- **Frontend:** React + TypeScript (not yet built)
-- **Auth:** Firebase (not yet implemented)
+- **Frontend:** React + TypeScript + Vite + Tailwind v4 + shadcn/ui + framer-motion (built — UC1, UC2, Login, Register)
+- **Auth:** Firebase email/password (implemented — frontend AuthContext + backend token verification)
 - **Data:** pandas, numpy, joblib
 
 ## Key Design Rules
@@ -75,14 +75,14 @@ visuals/          Generated charts and metrics CSVs
 - System validates constraints → predicts season points → ILP optimizer → 15-player squad (11 starters + 4 bench)
 - Output includes player list, total cost, expected points, and **short explanations for key selections**
 - Exception flows: infeasible constraints → explain conflict; missing data → inform user; model unavailable → fallback; optimization timeout → return best-so-far
-- **Status:** BACKEND COMPLETE. ILP optimizer builds full 15-player squad. Endpoint returns starters, bench, explanations. Needs React frontend.
+- **Status:** COMPLETE end-to-end. ILP optimizer builds 15-player squad. Endpoint returns starters, bench, explanations. React UI live with FIFA-style cards, team kits, glassmorphism, Firebase-auth-gated.
 
 ### UC2 — Recommend Weekly Lineup (starting 11 from existing squad)
 - User provides/loads their current 15-player squad via the **web UI**
 - System validates squad → predicts GW points per player → selects optimal starting XI + bench order
 - Output includes starting 11, formation, bench order, expected points, and **short explanations**
 - Exception flows: invalid squad → highlight issues; missing GW data → offer refresh; model unavailable → fallback
-- **Status:** BACKEND COMPLETE. FPL API fetcher, gameweek predictor (placeholder-v1), lineup optimizer (ILP), and API endpoint all implemented. Needs React frontend.
+- **Status:** COMPLETE end-to-end. FPL API fetcher, gameweek predictor (V8 CatBoost models in `Weekly Model/production/`), lineup optimizer (ILP), endpoint all implemented. React UI live with formation override, gameweek picker, captain/VC badges, kit images.
 
 ## Database (PostgreSQL via Docker)
 
@@ -180,19 +180,19 @@ python -m cli.build_team --budget 100 --formation 4-3-3
 
 **Goal:** Build the web app from the report. Two pages matching the two use cases.
 
-- [ ] **3.1 Scaffold** — Vite + React + TypeScript in `/frontend/`
-- [ ] **3.2 CORS** — add middleware in `backend/app/main.py`
-- [ ] **3.3 API client** — `/frontend/src/api/` typed wrappers
-- [ ] **3.4 Squad Builder page (UC1)** — budget slider, formation dropdown, locked/banned search, pitch view, explanation panel
-- [ ] **3.5 Lineup Advisor page (UC2)** — squad input, recommendation display, transfer suggestion, explanations
-- [ ] **3.6 Shared components** — Navbar, ExplanationPanel, PlayerCard, SquadPitch
-- [ ] **3.7 Demo polish** — responsive, looks good for defense presentation
+- [x] **3.1 Scaffold** — Vite + React + TypeScript in `/frontend/`
+- [x] **3.2 CORS** — middleware in `backend/app/main.py`
+- [x] **3.3 API client** — `/frontend/src/api/` typed wrappers
+- [x] **3.4 Squad Builder page (UC1)** — budget slider, formation dropdown, locked/banned search, pitch view, explanation panel
+- [x] **3.5 Lineup Advisor page (UC2)** — squad input, formation/gameweek override, captain/VC, explanations
+- [x] **3.6 Shared components** — AppHeader, ExplanationPanel, PlayerNode (FIFA-style with kits), PitchView, BenchCard
+- [x] **3.7 Demo polish** — premium soccer-themed UI: stadium background, glassmorphism, team kits, framer-motion animations, dark mode default
 
 ### Phase 4: Auth & Security (est. ~4 dev-days)
 
-- [ ] **4.1 Firebase project setup**
-- [ ] **4.2 Frontend auth** — AuthContext, Login/Register pages, token in API headers
-- [ ] **4.3 Backend token verification** — `backend/app/auth.py` with FastAPI dependency
+- [x] **4.1 Firebase project setup** — email/password enabled
+- [x] **4.2 Frontend auth** — `AuthContext`, `Login`/`Register`/`ForgotPassword` pages (split-screen "pre-match warmup" design), token in API headers, `ProtectedRoute`, logout in header
+- [x] **4.3 Backend token verification** — `backend/app/auth.py` with `get_current_user` FastAPI dependency, protects `/squad/generate` and `/lineup/recommend`. Service account JSON lives at `~/firebase-admin-automatic-champion.json` (outside repo), backend reads it via `GOOGLE_APPLICATION_CREDENTIALS` env var.
 
 ### Phase 5: Testing (est. ~8 dev-days)
 

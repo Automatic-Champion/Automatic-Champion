@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from ..auth import get_current_user
 from ..config import DATA_PATH, MODELS_DIR
 from ..schemas import (
     LineupRecommendRequest,
@@ -18,7 +19,10 @@ router = APIRouter(prefix="/lineup", tags=["lineup"])
 
 
 @router.post("/recommend", response_model=LineupRecommendResponse)
-def recommend_lineup(payload: LineupRecommendRequest) -> LineupRecommendResponse:
+def recommend_lineup(
+    payload: LineupRecommendRequest,
+    current_user: dict = Depends(get_current_user),
+) -> LineupRecommendResponse:
     from src.fpl_api import get_current_gameweek
     from src.gameweek_predictor import PREDICTOR_VERSION, predict_gameweek_points
     from src.lineup_optimizer import optimize_lineup
