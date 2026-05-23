@@ -1,9 +1,22 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { LogOut } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { Button } from "../components/ui/button";
+import { useAuth } from "../context/AuthContext";
 
 const AppHeader: React.FC = () => {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  };
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -62,6 +75,20 @@ const AppHeader: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <ThemeToggleButton />
+          {user?.email && (
+            <span className="hidden text-sm text-gray-600 dark:text-gray-300 sm:inline">
+              {user.email}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            aria-label="Log out"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Log out</span>
+          </Button>
         </div>
       </div>
     </header>

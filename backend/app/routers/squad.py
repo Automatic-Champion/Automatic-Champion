@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from ..auth import get_current_user
 from ..schemas import (
     SquadGenerateRequest,
     SquadGenerateResponse,
@@ -36,7 +37,10 @@ def _build_player_response(
 
 
 @router.post("/generate", response_model=SquadGenerateResponse, status_code=status.HTTP_201_CREATED)
-def generate_squad(payload: SquadGenerateRequest) -> SquadGenerateResponse:
+def generate_squad(
+    payload: SquadGenerateRequest,
+    current_user: dict = Depends(get_current_user),
+) -> SquadGenerateResponse:
     locked = {str(pid) for pid in payload.locked_ids} if payload.locked_ids else None
     banned = {str(pid) for pid in payload.banned_ids} if payload.banned_ids else None
 
