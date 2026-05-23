@@ -1,14 +1,24 @@
+from contextlib import asynccontextmanager
+
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from .auth import init_firebase
 from .config import DATA_PATH
 from .database import engine
 from .routers.lineup import router as lineup_router
 from .routers.squad import router as squad_router
 
-app = FastAPI(title="Automatic Champion API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_firebase()
+    yield
+
+
+app = FastAPI(title="Automatic Champion API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -142,6 +142,14 @@ export default function Login() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <div className="flex justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-amber-400 underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </motion.div>
 
             {error && (

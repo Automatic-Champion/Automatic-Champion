@@ -11,30 +11,34 @@ from firebase_admin import credentials
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CREDENTIALS_PATH = "/Users/yuvaldavidovits/firebase-admin-automatic-champion.json"
 
-
-def _initialize_firebase() -> None:
+def init_firebase() -> None:
     if firebase_admin._apps:
         return
 
-    cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", _DEFAULT_CREDENTIALS_PATH)
-    if not Path(cred_path).is_file():
-        logger.error("Firebase service account file not found at %s", cred_path)
-        raise RuntimeError(
-            f"Firebase service account file not found at {cred_path}. "
-            "Set GOOGLE_APPLICATION_CREDENTIALS to the JSON path."
+    cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not cred_path:
+        logger.warning(
+            "GOOGLE_APPLICATION_CREDENTIALS not set — auth endpoints will return 503"
         )
+        return
+
+    if not Path(cred_path).is_file():
+        logger.warning(
+            "Firebase service account file not found at %s — auth endpoints will return 503",
+            cred_path,
+        )
+        return
 
     try:
         cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
+        app = firebase_admin.initialize_app(cred)
     except Exception as exc:
-        logger.error("Failed to initialize Firebase Admin SDK: %s", exc)
-        raise
+        logger.warning("Failed to initialize Firebase Admin SDK: %s", exc)
+        return
 
-
-_initialize_firebase()
+    project_id = app.project_id or "<unknown>"
+    logger.info("Firebase Admin SDK initialized for project: %s", project_id)
 
 
 def get_current_user(authorization: str | None = Header(None)) -> dict:
@@ -53,6 +57,19 @@ def get_current_user(authorization: str | None = Header(None)) -> dict:
 
     try:
         decoded = firebase_auth.verify_id_token(token)
+    except ValueError as exc:
+        # firebase_admin raises ValueError when no app is initialized
+        if not firebase_admin._apps:
+            logger.warning("Firebase Admin SDK not initialized — returning 503")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service unavailable",
+            ) from exc
+        logger.info("Firebase token verification failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing authentication token",
+        ) from exc
     except Exception as exc:
         logger.info("Firebase token verification failed: %s", exc)
         raise HTTPException(

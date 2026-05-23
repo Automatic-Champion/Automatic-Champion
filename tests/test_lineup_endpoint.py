@@ -10,6 +10,18 @@ from backend.app.main import app
 client = TestClient(app)
 
 
+@pytest.fixture
+def auth_headers() -> dict[str, str]:
+    return {"Authorization": "Bearer faketoken"}
+
+
+@pytest.fixture
+def mock_verify_token():
+    with patch("backend.app.auth.firebase_auth.verify_id_token") as mock:
+        mock.return_value = {"uid": "test-user", "email": "test@example.com"}
+        yield mock
+
+
 def _make_squad() -> list[dict]:
     """Build a valid 15-player squad: 2 GK, 5 DEF, 5 MID, 3 FWD."""
     players = []
@@ -42,9 +54,9 @@ def _mock_gw_predictions(squad, gameweek=None):
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
 @patch("src.explainer.explain_squad", return_value={})
-def test_recommend_lineup_valid(mock_explain, mock_predict):
+def test_recommend_lineup_valid(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
-    resp = client.post("/lineup/recommend", json={"squad": squad})
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
     assert resp.status_code == 200
 
     data = resp.json()
@@ -68,21 +80,22 @@ def test_recommend_lineup_valid(mock_explain, mock_predict):
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-def test_recommend_lineup_invalid_squad_size(mock_predict):
+def test_recommend_lineup_invalid_squad_size(mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()[:10]  # Only 10 players
-    resp = client.post("/lineup/recommend", json={"squad": squad})
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
     assert resp.status_code == 400
     assert "15" in resp.json()["detail"]
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
 @patch("src.explainer.explain_squad", return_value={})
-def test_recommend_lineup_with_formation(mock_explain, mock_predict):
+def test_recommend_lineup_with_formation(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
-    resp = client.post("/lineup/recommend", json={
-        "squad": squad,
-        "formation": "3-5-2",
-    })
+    resp = client.post(
+        "/lineup/recommend",
+        json={"squad": squad, "formation": "3-5-2"},
+        headers=auth_headers,
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["formation"] == "3-5-2"
@@ -94,21 +107,28 @@ def test_recommend_lineup_with_formation(mock_explain, mock_predict):
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-def test_recommend_lineup_invalid_formation(mock_predict):
+def test_recommend_lineup_invalid_formation(mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
-    resp = client.post("/lineup/recommend", json={
-        "squad": squad,
-        "formation": "1-1-1",
-    })
+    resp = client.post(
+        "/lineup/recommend",
+        json={"squad": squad, "formation": "1-1-1"},
+        headers=auth_headers,
+    )
     assert resp.status_code == 400
 
 
 @patch("src.fpl_api.get_current_gameweek", return_value=12)
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
 @patch("src.explainer.explain_squad", return_value={})
-def test_recommend_lineup_null_gameweek_returns_resolved(mock_explain, mock_predict, mock_gw):
+def test_recommend_lineup_null_gameweek_returns_resolved(
+    mock_explain, mock_predict, mock_gw, mock_verify_token, auth_headers
+):
     squad = _make_squad()
-    resp = client.post("/lineup/recommend", json={"squad": squad, "gameweek": None})
+    resp = client.post(
+        "/lineup/recommend",
+        json={"squad": squad, "gameweek": None},
+        headers=auth_headers,
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["gameweek"] == 12
@@ -116,9 +136,11 @@ def test_recommend_lineup_null_gameweek_returns_resolved(mock_explain, mock_pred
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
 @patch("src.explainer.explain_squad", side_effect=RuntimeError("boom"))
-def test_recommend_lineup_explanation_failure_non_fatal(mock_explain, mock_predict):
+def test_recommend_lineup_explanation_failure_non_fatal(
+    mock_explain, mock_predict, mock_verify_token, auth_headers
+):
     squad = _make_squad()
-    resp = client.post("/lineup/recommend", json={"squad": squad})
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
     assert resp.status_code == 200
     # Explanations should be empty but response still valid
     data = resp.json()
