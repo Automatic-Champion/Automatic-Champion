@@ -1,0 +1,93 @@
+{
+  "eval_season": "2024-25",
+  "metrics": [
+    {
+      "position": "GK",
+      "algorithm": "XGBRegressor",
+      "n_features": 71,
+      "n_samples": 82,
+      "mae": 17.03538243218166,
+      "rmse": 24.382019818413543,
+      "r2": 0.7328222502815189
+    },
+    {
+      "position": "DEF",
+      "algorithm": "ElasticNet",
+      "n_features": 14,
+      "n_samples": 271,
+      "mae": 23.487450025465215,
+      "rmse": 29.217725772374546,
+      "r2": 0.4787976756731258
+    },
+    {
+      "position": "MID",
+      "algorithm": "Ridge",
+      "n_features": 49,
+      "n_samples": 347,
+      "mae": 27.653219684814562,
+      "rmse": 36.90204840697251,
+      "r2": 0.48033198120980203
+    },
+    {
+      "position": "FWD",
+      "algorithm": "LGBMRegressor",
+      "n_features": 71,
+      "n_samples": 87,
+      "mae": 31.02756632029873,
+      "rmse": 42.984094099775575,
+      "r2": 0.4746434296781449
+    }
+  ],
+  "baselines": [
+    {
+      "position": "GK",
+      "model_mae": 17.03538243218166,
+      "baseline_last_season_mae": 22.646341463414632,
+      "baseline_position_mean_mae": 39.090888173032674
+    },
+    {
+      "position": "DEF",
+      "model_mae": 23.487450025465215,
+      "baseline_last_season_mae": 29.494464944649447,
+      "baseline_position_mean_mae": 34.692377985100606
+    },
+    {
+      "position": "MID",
+      "model_mae": 27.653219684814562,
+      "baseline_last_season_mae": 30.394812680115272,
+      "baseline_position_mean_mae": 40.39530474645016
+    },
+    {
+      "position": "FWD",
+      "model_mae": 31.02756632029873,
+      "baseline_last_season_mae": 30.45977011494253,
+      "baseline_position_mean_mae": 48.50167231957793
+    }
+  ],
+  "algorithm": {
+    "GK": "XGBRegressor",
+    "DEF": "ElasticNet",
+    "MID": "Ridge",
+    "FWD": "LGBMRegressor"
+  },
+  "season_counts": {
+    "2019-20": 667,
+    "2020-21": 714,
+    "2021-22": 740,
+    "2022-23": 784,
+    "2023-24": 872,
+    "2024-25": 787
+  },
+  "target_stats": {
+    "median": 23.0,
+    "mean": 41.386283961437336,
+    "max": 344.0,
+    "p90": 115.0
+  },
+  "n_features_used": {
+    "GK": 71,
+    "DEF": 14,
+    "MID": 49,
+    "FWD": 71
+  }
+}

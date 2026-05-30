@@ -9,6 +9,7 @@ from .auth import init_firebase
 from .config import DATA_PATH
 from .database import engine
 from .routers.lineup import router as lineup_router
+from .routers.saved_squads import router as saved_squads_router
 from .routers.squad import router as squad_router
 
 
@@ -58,3 +59,4 @@ def list_players() -> list[dict]:
 
 app.include_router(squad_router)
 app.include_router(lineup_router)
+app.include_router(saved_squads_router)

@@ -1,13 +1,15 @@
 import { Link, useNavigate } from "react-router";
-import { LogOut } from "lucide-react";
+import { BookmarkCheck, LogOut } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../context/AuthContext";
+import { useSquad } from "../context/SquadContext";
 
 const AppHeader: React.FC = () => {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { user, logout } = useAuth();
+  const { currentSquadName } = useSquad();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -74,6 +76,17 @@ const AppHeader: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          {currentSquadName && (
+            <span
+              className="hidden items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 sm:inline-flex dark:text-amber-300"
+              title={`Active squad: ${currentSquadName}`}
+            >
+              <BookmarkCheck className="size-3.5" />
+              <span className="max-w-[12rem] truncate">
+                Active squad: {currentSquadName}
+              </span>
+            </span>
+          )}
           <ThemeToggleButton />
           {user?.email && (
             <span className="hidden text-sm text-gray-600 dark:text-gray-300 sm:inline">

@@ -176,3 +176,26 @@ class LineupRecommendResponse(BaseModel):
     starters: list[LineupStarterResponse]
     bench: list[LineupBenchResponse]
     predictor_version: str
+
+
+# ── Saved Squads schemas ────────────────────────────────────────────
+
+
+class SavedSquadSummary(BaseModel):
+    id: int
+    name: str
+    formation: str
+    total_cost: float
+    total_predicted_points: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SavedSquadResponse(SavedSquadSummary):
+    payload: SquadGenerateResponse
+
+
+class SavedSquadCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+    squad: SquadGenerateResponse

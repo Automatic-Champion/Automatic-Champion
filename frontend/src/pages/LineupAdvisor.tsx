@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { Loader2 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import PageMeta from "../components/common/PageMeta";
@@ -7,6 +6,7 @@ import { PitchView } from "../components/pitch";
 import type { PitchViewPlayer } from "../components/pitch";
 import BenchCard from "../components/squad/BenchCard";
 import ExplanationPanel from "../components/squad/ExplanationPanel";
+import SavedSquadsList from "../components/squad/SavedSquadsList";
 import SummaryBar from "../components/squad/SummaryBar";
 import PitchSVG from "../components/pitch/PitchSVG";
 import { recommendLineup } from "../api/client";
@@ -219,18 +219,9 @@ export default function LineupAdvisor() {
           Lineup Advisor
         </motion.h1>
 
-        {!squad ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white/80 py-20 backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-xl">
-            <p className="text-sm text-muted-foreground">
-              No squad found. Go to Squad Builder to generate one first.
-            </p>
-            <Link to="/">
-              <Button variant="outline" className="mt-4">
-                Go to Squad Builder
-              </Button>
-            </Link>
-          </div>
-        ) : (
+        <SavedSquadsList hasCurrentSquad={!!squad} />
+
+        {squad && (
           <>
             {/* Squad summary — glass card */}
             <div className="rounded-xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.03] dark:shadow-xl dark:backdrop-blur-xl">

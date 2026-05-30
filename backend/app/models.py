@@ -91,3 +91,15 @@ class Season_Team_Player(Base):
 
     season_team: Mapped[Season_Team] = relationship("Season_Team", back_populates="season_team_players")
     player: Mapped[Player] = relationship("Player", back_populates="season_team_players")
+
+
+class SavedSquad(Base):
+    __tablename__ = "saved_squads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_uid: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
