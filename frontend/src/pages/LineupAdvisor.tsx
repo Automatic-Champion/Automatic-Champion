@@ -12,6 +12,7 @@ import PitchSVG from "../components/pitch/PitchSVG";
 import { recommendLineup } from "../api/client";
 import { squadToLineupInput } from "../api/helpers";
 import { useSquad } from "../context/SquadContext";
+import { getKitUrl } from "@/lib/teamKits";
 import type {
   LineupRecommendResponse,
   DisplayPlayer,
@@ -244,20 +245,35 @@ export default function LineupAdvisor() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
-                {[...squad.players, ...squad.bench].map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 rounded px-2 py-1 text-sm"
-                  >
-                    <span className="w-8 shrink-0 text-xs font-medium text-muted-foreground">
-                      {p.position}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {p.team}
-                    </span>
-                  </div>
-                ))}
+                {[...squad.players, ...squad.bench].map((p) => {
+                  const kitUrl = getKitUrl(p.team);
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 rounded px-2 py-1 text-sm"
+                    >
+                      <span className="w-8 shrink-0 text-xs font-medium text-muted-foreground">
+                        {p.position}
+                      </span>
+                      <span className="flex size-5 shrink-0 items-center justify-center">
+                        {kitUrl ? (
+                          <img
+                            src={kitUrl}
+                            alt={p.team}
+                            loading="lazy"
+                            className="size-full object-contain"
+                          />
+                        ) : (
+                          <span aria-hidden className="text-sm leading-none">{"\u{1F455}"}</span>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {p.team}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

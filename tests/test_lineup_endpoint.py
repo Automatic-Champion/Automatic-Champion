@@ -53,7 +53,7 @@ def _mock_gw_predictions(squad, gameweek=None):
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-@patch("src.explainer.explain_squad", return_value={})
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_valid(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
     resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
@@ -88,7 +88,7 @@ def test_recommend_lineup_invalid_squad_size(mock_predict, mock_verify_token, au
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-@patch("src.explainer.explain_squad", return_value={})
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_with_formation(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
     resp = client.post(
@@ -119,7 +119,7 @@ def test_recommend_lineup_invalid_formation(mock_predict, mock_verify_token, aut
 
 @patch("src.fpl_api.get_current_gameweek", return_value=12)
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-@patch("src.explainer.explain_squad", return_value={})
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_null_gameweek_returns_resolved(
     mock_explain, mock_predict, mock_gw, mock_verify_token, auth_headers
 ):
@@ -135,7 +135,7 @@ def test_recommend_lineup_null_gameweek_returns_resolved(
 
 
 @patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
-@patch("src.explainer.explain_squad", side_effect=RuntimeError("boom"))
+@patch("src.weekly_explainer.explain_weekly_squad", side_effect=RuntimeError("boom"))
 def test_recommend_lineup_explanation_failure_non_fatal(
     mock_explain, mock_predict, mock_verify_token, auth_headers
 ):
