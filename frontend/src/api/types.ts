@@ -94,6 +94,21 @@ export interface LineupRecommendResponse {
   predictor_version: string;
 }
 
+// ── Saved Squads ──────────────────────────────────────────────────
+
+export interface SavedSquadSummary {
+  id: number;
+  name: string;
+  formation: string;
+  total_cost: number;
+  total_predicted_points: number;
+  created_at: string;
+}
+
+export interface SavedSquadResponse extends SavedSquadSummary {
+  payload: SquadGenerateResponse;
+}
+
 // ── Shared display type for components used by both UC1 and UC2 ───
 
 export interface DisplayPlayer {

@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { BookmarkCheck, Save } from "lucide-react";
 import PageMeta from "../components/common/PageMeta";
 import { PitchView } from "../components/pitch";
 import type { PitchViewPlayer } from "../components/pitch";
 import ConstraintForm from "../components/form/ConstraintForm";
 import BenchCard from "../components/squad/BenchCard";
 import ExplanationPanel from "../components/squad/ExplanationPanel";
+import SaveSquadDialog from "../components/squad/SaveSquadDialog";
 import SummaryBar from "../components/squad/SummaryBar";
 import PitchSVG from "../components/pitch/PitchSVG";
+import { Button } from "@/components/ui/button";
 import { fetchPlayers, generateSquad } from "../api/client";
 import { useSquad } from "../context/SquadContext";
 import type {
@@ -114,9 +117,16 @@ export default function SquadBuilder() {
   const [playersError, setPlayersError] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const { squad: squadResult, setSquad: setSquadResult } = useSquad();
+  const {
+    squad: squadResult,
+    setSquad: setSquadResult,
+    currentSquadName,
+    setSquadFromSaved,
+  } = useSquad();
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [savedToast, setSavedToast] = useState<string | null>(null);
 
   const prefersReduced = useReducedMotion();
   const dur = (d: number) => (prefersReduced ? 0 : d);
@@ -234,6 +244,7 @@ export default function SquadBuilder() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: dur(0.5), ease: [...EASE_OUT_EXPO] }}
+                  className="space-y-2"
                 >
                   <SummaryBar
                     formation={squadResult.formation}
@@ -241,6 +252,34 @@ export default function SquadBuilder() {
                     remainingBudget={squadResult.budget - squadResult.total_cost}
                     totalPredictedPoints={squadResult.total_predicted_points}
                   />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {savedToast ? (
+                      <p className="text-xs text-emerald-500" role="status">
+                        Saved as &ldquo;{savedToast}&rdquo;
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    {currentSquadName ? (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-300"
+                        title={`This squad is saved as "${currentSquadName}"`}
+                      >
+                        <BookmarkCheck className="size-3.5" />
+                        Saved as &ldquo;{currentSquadName}&rdquo;
+                      </span>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSaveOpen(true)}
+                        className="border-amber-500/30 bg-white/60 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:bg-white/[0.03] dark:text-amber-300 dark:hover:bg-amber-500/10 dark:hover:text-amber-200"
+                      >
+                        <Save className="size-3.5" />
+                        Save squad
+                      </Button>
+                    )}
+                  </div>
                 </motion.div>
 
                 <motion.div
@@ -303,6 +342,19 @@ export default function SquadBuilder() {
         player={selectedPlayer}
         onClose={() => setSelectedPlayerId(null)}
       />
+
+      {squadResult && (
+        <SaveSquadDialog
+          open={saveOpen}
+          onOpenChange={setSaveOpen}
+          squad={squadResult}
+          onSaved={(saved) => {
+            setSquadFromSaved(saved);
+            setSavedToast(saved.name);
+            window.setTimeout(() => setSavedToast(null), 4000);
+          }}
+        />
+      )}
     </>
   );
 }
