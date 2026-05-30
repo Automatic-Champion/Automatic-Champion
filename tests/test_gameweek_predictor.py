@@ -7,6 +7,7 @@ import pytest
 from src.fpl_api import FPLAPIError
 from src.gameweek_predictor import (
     PREDICTOR_VERSION,
+    get_feature_rows,
     predict_gameweek_points,
     _match_fpl_player,
     _normalize_name,
@@ -334,6 +335,38 @@ class TestV8RealModel:
             "— gameweek scoping is broken (predictor likely using the latest "
             "row regardless of requested GW)"
         )
+
+    @patch("src.gameweek_predictor.get_player_data", return_value={})
+    @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+    def test_get_feature_rows_matches_predictor(self, _mock_gw, _mock_players):
+        """get_feature_rows must select the SAME row the predictor scores —
+        feeding it through the model by hand must reproduce the prediction.
+        This is the drift guard between the predictor and the weekly explainer."""
+        import numpy as np
+        from catboost import Pool
+
+        from src.gameweek_predictor import CAT_COLS, CLIP_RANGE, _load_models
+
+        salah = {"id": "328", "name": "Mohamed Salah", "position": "MID",
+                 "team": "Liverpool", "pred": 380.0}
+        rows = get_feature_rows([salah], gameweek=10)
+        assert "328" in rows
+        pos, row, feats = rows["328"]
+        assert pos == "MID"
+        assert len(feats) > 0
+
+        models = _load_models()
+        X = row[feats].to_frame().T.reset_index(drop=True)
+        for c in CAT_COLS:
+            if c in X.columns:
+                X[c] = X[c].astype(str)
+        cat_in_X = [c for c in CAT_COLS if c in X.columns]
+        raw = float(models["MID"].predict(Pool(X, cat_features=cat_in_X))[0])
+        lo, hi = CLIP_RANGE["MID"]
+        expected = float(np.clip(raw, lo, hi))
+
+        got = predict_gameweek_points([salah], gameweek=10)["328"]
+        assert got == pytest.approx(expected)
 
     @patch("src.gameweek_predictor.get_player_data", return_value={})
     @patch("src.gameweek_predictor.get_current_gameweek", return_value=10)

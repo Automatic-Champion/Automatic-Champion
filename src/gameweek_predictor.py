@@ -136,6 +136,28 @@ def _features_for(pos: str, available_cols: set[str]) -> list[str]:
     return out
 
 
+def _rows_by_element(
+    feature_table: pd.DataFrame, gameweek: int | None
+) -> dict[int, pd.Series]:
+    """Latest feature row per element within the window for *gameweek*.
+
+    Row semantics (kept identical to the predictor): a row at GW=N holds the
+    features the model saw going into GW=N, whose label was the score in GW=N+1.
+    To predict gameweek G we want each player's latest row with GW < G. GW<=1
+    (or None) uses all rows; an empty window falls back to all rows. The
+    DataFrame is sorted ascending by GW, so drop_duplicates(keep='last') leaves
+    one row per element — the latest within the scoped window.
+    """
+    if gameweek is None or int(gameweek) <= 1:
+        scoped = feature_table
+    else:
+        scoped = feature_table[feature_table["GW"] < int(gameweek)]
+        if scoped.empty:
+            scoped = feature_table
+    latest = scoped.drop_duplicates(subset="element", keep="last")
+    return {int(r["element"]): r for _, r in latest.iterrows()}
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Lazy loaders — models and feature table are loaded once per process and
 # cached in module-level globals. Loading failures degrade to placeholder.
@@ -239,16 +261,7 @@ def predict_gameweek_points(
     # exists at all).
     rows_by_element: dict[int, pd.Series] = {}
     if models is not None and feature_table is not None and "element" in feature_table.columns:
-        if gameweek is None or gameweek <= 1:
-            scoped = feature_table
-        else:
-            scoped = feature_table[feature_table["GW"] < int(gameweek)]
-            if scoped.empty:
-                scoped = feature_table
-        # The DataFrame is sorted ascending by GW, so drop_duplicates(keep='last')
-        # leaves one row per element — the latest row within the scoped window.
-        latest = scoped.drop_duplicates(subset="element", keep="last")
-        rows_by_element = {int(r["element"]): r for _, r in latest.iterrows()}
+        rows_by_element = _rows_by_element(feature_table, gameweek)
 
     predictions: dict[str, float] = {}
     fallback_players: list[dict] = []
@@ -298,6 +311,45 @@ def predict_gameweek_points(
             predictions[pid] = _placeholder_predict(player, fpl_players, fpl_by_name, fpl_list)
 
     return predictions
+
+
+def get_feature_rows(
+    squad: list[dict],
+    gameweek: int | None = None,
+) -> dict[str, tuple[str, pd.Series, list[str]]]:
+    """Return the V8 feature row each squad player would be scored on.
+
+    Mirrors ``predict_gameweek_points``' row selection EXACTLY (same models,
+    feature table, gameweek scoping and feature subset) so the predictor and any
+    consumer — e.g. the weekly explainer — can't drift apart.
+
+    Returns
+        dict mapping ``str(player_id)`` → ``(position, feature_row, feature_names)``.
+        Players the model can't score (unknown position, non-int id, or no row in
+        the scoped window) are omitted. Returns ``{}`` when the models or feature
+        table are unavailable (same degradation as the predictor).
+    """
+    models = _load_models()
+    feature_table = _load_feature_table()
+    if models is None or feature_table is None or "element" not in feature_table.columns:
+        return {}
+
+    rows_by_element = _rows_by_element(feature_table, gameweek)
+    available = set(feature_table.columns)
+    out: dict[str, tuple[str, pd.Series, list[str]]] = {}
+    for player in squad:
+        pos = player.get("position", "")
+        if pos not in models:
+            continue
+        try:
+            pid_int = int(player["id"])
+        except (TypeError, ValueError):
+            continue
+        row = rows_by_element.get(pid_int)
+        if row is None:
+            continue
+        out[str(player["id"])] = (pos, row, _features_for(pos, available))
+    return out
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -5,7 +5,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth import get_current_user
-from ..config import DATA_PATH, MODELS_DIR
 from ..schemas import (
     LineupRecommendRequest,
     LineupRecommendResponse,
@@ -46,18 +45,13 @@ def recommend_lineup(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
-    # Generate explanations (non-fatal)
+    # Generate weekly (V8) per-player explanations (non-fatal). These explain
+    # the model's gameweek prediction, unlike the season explainer used by UC1.
     explanations: dict[str, list[dict]] = {}
     try:
-        from src.explainer import explain_squad
+        from src.weekly_explainer import explain_weekly_squad
 
-        all_players = [{"id": p["id"], "position": p["position"]} for p in squad]
-        explanations = explain_squad(
-            players=all_players,
-            data_path=DATA_PATH,
-            models_dir=MODELS_DIR,
-            top_k=3,
-        )
+        explanations = explain_weekly_squad(squad, resolved_gameweek, top_k=3)
     except Exception:
         logger.warning("Explanation generation failed", exc_info=True)
 
