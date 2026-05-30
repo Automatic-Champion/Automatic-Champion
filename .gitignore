@@ -39,3 +39,7 @@ Base Data/
 Weekly Model/Archive/
 Weekly Model/Base Data/
 Weekly Model/graphs/
+# train.csv is 130MB — over GitHub's 100MB limit. Only needed to retrain
+# (regenerate via Weekly Model/production/build_data.py). test.csv (the runtime
+# feature table read by src/gameweek_predictor.py) is intentionally tracked.
+Weekly Model/production/train.csv
