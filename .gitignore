@@ -38,5 +38,6 @@ Base Data/
 # Weekly Model — archive and large files
 Weekly Model/Archive/
 Weekly Model/Base Data/
+Weekly Model/graphs/
 Weekly Model/production/train.csv
 Weekly Model/production/test.csv
