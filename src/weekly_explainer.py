@@ -123,13 +123,13 @@ _CONCEPTS: dict[str, tuple[str, "callable"]] = {
     "expected_goal_involvements": ("attacking", lambda v, w: f"{_f2(v)} expected goal involvements{_w(w)}"),
     "goals_scored":      ("attacking", lambda v, w: f"{_i(v)} goals{_w(w)}"),
     "assists":           ("attacking", lambda v, w: f"{_i(v)} assists{_w(w)}"),
-    "threat":            ("attacking", lambda v, w: f"High threat rating ({_i(v)}){_w(w)}"),
-    "creativity":        ("attacking", lambda v, w: f"High creativity ({_i(v)}){_w(w)}"),
+    "threat":            ("attacking", lambda v, w: f"High goal threat (threat rating {_i(v)}){_w(w)}"),
+    "creativity":        ("attacking", lambda v, w: f"Creating chances (creativity rating {_i(v)}){_w(w)}"),
     "team_goals_scored": ("attacking", lambda v, w: f"Team scoring freely ({_i(v)} goals){_w(w)}"),
     # performance
-    "ict_index": ("performance", lambda v, w: f"ICT index of {_f1(v)}{_w(w)}"),
-    "influence": ("performance", lambda v, w: f"Strong influence ({_f1(v)}){_w(w)}"),
-    "bps":       ("performance", lambda v, w: f"{_i(v)} BPS{_w(w)} — in line for bonus"),
+    "ict_index": ("performance", lambda v, w: f"Strong all-round underlying numbers (ICT index {_f1(v)}){_w(w)}"),
+    "influence": ("performance", lambda v, w: f"Big impact on matches (influence rating {_f1(v)}){_w(w)}"),
+    "bps":       ("performance", lambda v, w: f"High bonus-points score ({_i(v)} BPS){_w(w)} — in contention for bonus"),
     "bonus":     ("performance", lambda v, w: f"{_i(v)} bonus points{_w(w)}"),
     # defensive
     "clean_sheets":            ("defensive", lambda v, w: f"{_i(v)} clean sheets{_w(w)}"),
@@ -137,12 +137,13 @@ _CONCEPTS: dict[str, tuple[str, "callable"]] = {
     "expected_goals_conceded": ("defensive", lambda v, w: f"Low expected goals conceded ({_f1(v)}){_w(w)}"),
     "saves":                   ("defensive", lambda v, w: f"{_i(v)} saves{_w(w)}"),
     "team_goals_conceded":     ("defensive", lambda v, w: f"Team defence holding firm ({_i(v)} conceded){_w(w)}"),
-    # value / trending
-    "value":    ("value", lambda v, w: f"Priced at £{float(v) / 10.0:.1f}m"),
-    "selected": ("trending", lambda v, w: "Popular among managers — a trending pick"),
+    # value / trending — correlate with quality but don't *explain* points, so
+    # these are used only as last-resort filler (see _fill_reasons).
+    "value":    ("value", lambda v, w: f"Good value at £{float(v) / 10.0:.1f}m"),
+    "selected": ("trending", lambda v, w: "Owned by a large share of FPL managers"),
     "transfers_balance": (
         "trending",
-        lambda v, w: "Net transfers in — momentum building"
+        lambda v, w: "Lots of managers transferring him in"
         if float(v) >= 0
         else "Steady ownership trend",
     ),
@@ -221,22 +222,33 @@ def _is_zeroish(base: str, val) -> bool:
 
 
 def _fill_reasons(reasons: list[dict], ranked, top_k: int) -> list[dict]:
-    """Append concept reasons under the price/ownership cap until full.
+    """Append concept reasons, preferring football-meaningful signals.
+
+    Price/ownership features (price, ownership, transfers) correlate with quality
+    but don't *explain* a gameweek's points, so they're demoted to last-resort
+    filler: genuine football signals (form, fixture, attacking, defensive,
+    minutes, ICT) take every slot they can first, and at most one price/ownership
+    reason is added — only when there aren't enough football reasons to reach
+    ``top_k``.
 
     ``ranked`` is an iterable of ``(base_concept, feature, value)`` already in
-    priority order.
+    priority order (by SHAP contribution or global importance).
     """
-    price_used = False
-    for base, feat, val in ranked:
-        if len(reasons) >= top_k:
-            break
-        if base in _PRICE_OWNERSHIP:
-            if price_used:
-                continue
-            price_used = True
-        category, builder = _CONCEPTS[base]
-        _b, phrase = _split_window(feat)
-        reasons.append({"text": builder(val, phrase), "category": category})
+    football = [t for t in ranked if t[0] not in _PRICE_OWNERSHIP]
+    filler = [t for t in ranked if t[0] in _PRICE_OWNERSHIP]
+
+    def _add(items, limit: int) -> None:
+        added = 0
+        for base, feat, val in items:
+            if len(reasons) >= top_k or added >= limit:
+                break
+            category, builder = _CONCEPTS[base]
+            _b, phrase = _split_window(feat)
+            reasons.append({"text": builder(val, phrase), "category": category})
+            added += 1
+
+    _add(football, top_k)  # football signals first, as many as fit
+    _add(filler, 1)        # ≤1 price/ownership, only to fill remaining slots
     return reasons
 
 
