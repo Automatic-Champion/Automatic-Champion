@@ -170,23 +170,25 @@ python cli/test_backend.py
 | ID | Description | Status |
 |----|-------------|--------|
 | TC-01 | Build squad with defaults → valid 15 players | Covered (test_full_squad.py) |
-| TC-02 | Build squad with user constraints (locked/banned) | Missing |
-| TC-03 | Infeasible constraints → explain conflict | Missing |
+| TC-02 | Build squad with user constraints (locked/banned) | Covered (test_squad_constraints.py) |
+| TC-03 | Infeasible constraints → explain conflict | Covered (test_squad_constraints.py) |
 | TC-04 | Weekly lineup from valid squad → valid 11 + bench | Covered (test_lineup_optimizer.py, test_lineup_endpoint.py) |
-| TC-05 | Invalid squad input → block and explain | Partial (validation tests exist) |
-| TC-06 | Missing/stale data → warn and offer options | Partial (FPL API fallback tested) |
+| TC-05 | Invalid squad input → block and explain | Covered (lineup: test_lineup_endpoint.py; squad: test_squad_constraints.py) |
+| TC-06 | Missing/stale data → warn and offer options | Covered (lineup response surfaces `warnings` on V8 fallback; test_lineup_endpoint.py + test_gameweek_predictor.py) |
 | NFR-01 | 30 requests, average ≤ 20 seconds | Missing (likely passes) |
 | NFR-02 | 5 new users, ≥ 80% success without help | Missing (can be informal) |
-| NFR-03 | Swap model with dummy → still works | Missing |
+| NFR-03 | Swap model with dummy → still works | Covered (test_model_swap.py) |
 
 **Test files (latest):**
 - `test_full_squad.py` — TC-01 coverage
-- `test_lineup_optimizer.py`, `test_lineup_endpoint.py` — TC-04 coverage; endpoint tests patched for Firebase token mocking
-- `test_gameweek_predictor.py` — V8 inference paths + `get_feature_rows` drift guard
+- `test_lineup_optimizer.py`, `test_lineup_endpoint.py` — TC-04 coverage; endpoint tests patched for Firebase token mocking; lineup endpoint also asserts TC-06 `warnings` (model-unavailable / partial-fallback / healthy)
+- `test_gameweek_predictor.py` — V8 inference paths + `get_feature_rows` drift guard + `predict_gameweek_points_with_meta` degradation metadata (TC-06)
 - `test_weekly_explainer.py` — SHAP-based weekly explanations (6 cases)
 - `test_auth.py` — Firebase auth dependency (9 cases — public/missing/invalid/valid token paths)
 - `test_saved_squads.py` — per-user squad CRUD (13 cases — in-memory SQLite via dependency_overrides)
-- Full suite: **~74 tests** passing
+- `test_squad_constraints.py` — TC-02/TC-03/TC-05 squad-build constraints (10 cases — locked/banned happy paths, all infeasibility errors, router 400 mapping)
+- `test_model_swap.py` — NFR-03 model-agnosticism (2 cases — every position model swapped for a constant-returning DummyModel, still builds a valid 15)
+- Full suite: **115 tests** passing
 
 ---
 
@@ -231,13 +233,13 @@ python cli/test_backend.py
 
 ### Phase 5: Testing (~partial)
 - [ ] **5.1 TC-01** — all 7 formations, full 15-player squad, budget edge cases (basic coverage exists, not exhaustive)
-- [ ] **5.2 TC-02** — locked/banned constraints
-- [ ] **5.3 TC-03** — infeasible constraints → descriptive error
+- [x] **5.2 TC-02** — locked/banned constraints (test_squad_constraints.py)
+- [x] **5.3 TC-03** — infeasible constraints → descriptive error (test_squad_constraints.py)
 - [x] **5.4 TC-04** — weekly lineup from valid squad
-- [ ] **5.5 TC-05** — invalid input → block and explain (partial)
-- [ ] **5.6 TC-06** — missing/stale data → warn (partial)
+- [x] **5.5 TC-05** — invalid input → block and explain (lineup + squad endpoints)
+- [x] **5.6 TC-06** — missing/stale data → warn (lineup response `warnings` field on V8 fallback)
 - [ ] **5.7 NFR-01** — 30 requests, avg ≤ 20 seconds
-- [ ] **5.8 NFR-03** — swap model with DummyModel → system still works
+- [x] **5.8 NFR-03** — swap model with DummyModel → system still works (test_model_swap.py)
 - [x] **5.9 API integration tests** — auth, saved squads, weekly explainer all covered
 
 ### Phase 6: Polish & Documentation
@@ -285,10 +287,11 @@ Both:                         Phase 6
 
 In priority order:
 
-1. **Write the missing tests** — TC-02, TC-03, TC-05, TC-06 (Phase 5). The report's test plan needs them.
-2. **README** — setup + architecture + how-to-run (Phase 6.1). Needed for grading and handoff.
-3. **NFR-01 performance test** — 30 requests, avg ≤ 20s. Likely passes; needs measurement.
-4. **NFR-03 model-swap test** — replace one position model with a dummy that returns a constant; system should still produce a valid squad.
-5. **NFR-02 informal user study** — five classmates, ≥80% success without help.
-6. **Backend logging** (Phase 6.3) and **dead code cleanup** (Phase 6.4).
-7. (Optional) ML enhancements — Experiment A for the weekly model, transfer recommender.
+The report's functional test plan is now complete: TC-01–TC-06 and NFR-03 are all Covered (test_full_squad.py, test_squad_constraints.py, test_lineup_*.py, test_gameweek_predictor.py, test_model_swap.py). Remaining, in priority order:
+
+1. **README** — setup + architecture + how-to-run (Phase 6.1). Needed for grading and handoff.
+2. **NFR-01 performance test** — 30 requests, avg ≤ 20s. Likely passes; needs measurement.
+3. **NFR-02 informal user study** — five classmates, ≥80% success without help.
+4. **Backend logging** (Phase 6.3) and **dead code cleanup** (Phase 6.4).
+5. (Optional) Frontend: surface the TC-06 lineup `warnings` as a UI banner on the Lineup Advisor (option C from the TC-06 work — backend already returns the field).
+6. (Optional) ML enhancements — Experiment A for the weekly model, transfer recommender.
