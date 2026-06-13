@@ -61,7 +61,7 @@ docs/
   seasonal_model_images/      10 PNG charts (actual-vs-predicted, residuals, feature importance, etc.)
 training/                  ML training pipelines for seasonal RF models (run manually, produce .joblib)
 analysis/                  One-off analysis, visualization, data prep scripts
-tests/                     Automated test suite (~74 tests across multiple files)
+tests/                     Automated test suite (~116 tests across multiple files)
 data/
   base/                       10 seasons of raw FPL data (2016-17 through 2025-26)
   historical_exports/         Pre-built training CSVs per season
@@ -175,7 +175,7 @@ python cli/test_backend.py
 | TC-04 | Weekly lineup from valid squad → valid 11 + bench | Covered (test_lineup_optimizer.py, test_lineup_endpoint.py) |
 | TC-05 | Invalid squad input → block and explain | Covered (lineup: test_lineup_endpoint.py; squad: test_squad_constraints.py) |
 | TC-06 | Missing/stale data → warn and offer options | Covered (lineup response surfaces `warnings` on V8 fallback; test_lineup_endpoint.py + test_gameweek_predictor.py) |
-| NFR-01 | 30 requests, average ≤ 20 seconds | Missing (likely passes) |
+| NFR-01 | 30 requests, average ≤ 20 seconds | Covered (test_performance.py; measured avg 0.87s — UC1 0.67s / UC2 1.07s) |
 | NFR-02 | 5 new users, ≥ 80% success without help | Missing (can be informal) |
 | NFR-03 | Swap model with dummy → still works | Covered (test_model_swap.py) |
 
@@ -188,7 +188,8 @@ python cli/test_backend.py
 - `test_saved_squads.py` — per-user squad CRUD (13 cases — in-memory SQLite via dependency_overrides)
 - `test_squad_constraints.py` — TC-02/TC-03/TC-05 squad-build constraints (10 cases — locked/banned happy paths, all infeasibility errors, router 400 mapping)
 - `test_model_swap.py` — NFR-03 model-agnosticism (2 cases — every position model swapped for a constant-returning DummyModel, still builds a valid 15)
-- Full suite: **115 tests** passing
+- `test_performance.py` — NFR-01 performance (1 case — 30 real requests, 15 UC1 + 15 UC2, asserts avg ≤ 20s; measured 0.87s avg)
+- Full suite: **116 tests** passing
 
 ---
 
@@ -238,7 +239,7 @@ python cli/test_backend.py
 - [x] **5.4 TC-04** — weekly lineup from valid squad
 - [x] **5.5 TC-05** — invalid input → block and explain (lineup + squad endpoints)
 - [x] **5.6 TC-06** — missing/stale data → warn (lineup response `warnings` field on V8 fallback)
-- [ ] **5.7 NFR-01** — 30 requests, avg ≤ 20 seconds
+- [x] **5.7 NFR-01** — 30 requests, avg ≤ 20 seconds (test_performance.py; measured 0.87s avg)
 - [x] **5.8 NFR-03** — swap model with DummyModel → system still works (test_model_swap.py)
 - [x] **5.9 API integration tests** — auth, saved squads, weekly explainer all covered
 
@@ -285,13 +286,9 @@ Both:                         Phase 6
 
 ## Remaining Work for the July 17–20 Defense
 
-In priority order:
+The report's test plan is now complete: TC-01–TC-06, NFR-01, and NFR-03 are all Covered (test_full_squad.py, test_squad_constraints.py, test_lineup_*.py, test_gameweek_predictor.py, test_model_swap.py, test_performance.py). NFR-02 is a manual usability study (not automatable). The README (Phase 6.1) is written. Remaining, in priority order:
 
-The report's functional test plan is now complete: TC-01–TC-06 and NFR-03 are all Covered (test_full_squad.py, test_squad_constraints.py, test_lineup_*.py, test_gameweek_predictor.py, test_model_swap.py). Remaining, in priority order:
-
-1. **README** — setup + architecture + how-to-run (Phase 6.1). Needed for grading and handoff.
-2. **NFR-01 performance test** — 30 requests, avg ≤ 20s. Likely passes; needs measurement.
-3. **NFR-02 informal user study** — five classmates, ≥80% success without help.
-4. **Backend logging** (Phase 6.3) and **dead code cleanup** (Phase 6.4).
-5. (Optional) Frontend: surface the TC-06 lineup `warnings` as a UI banner on the Lineup Advisor (option C from the TC-06 work — backend already returns the field).
-6. (Optional) ML enhancements — Experiment A for the weekly model, transfer recommender.
+1. **NFR-02 informal user study** — five classmates, ≥80% success without help (manual; not automatable).
+2. **Backend logging** (Phase 6.3) and **dead code cleanup** (Phase 6.4).
+3. (Optional) Frontend: surface the TC-06 lineup `warnings` as a UI banner on the Lineup Advisor (option C — backend already returns the field).
+4. (Optional) ML enhancements — Experiment A for the weekly model, transfer recommender.
