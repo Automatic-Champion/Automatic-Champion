@@ -52,7 +52,38 @@ def _mock_gw_predictions(squad, gameweek=None):
     return {str(p["id"]): p["pred"] / 38.0 for p in squad}
 
 
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+def _mock_gw_with_meta(squad, gameweek=None):
+    """Healthy-path stand-in for predict_gameweek_points_with_meta: every
+    player scored by the model, no fallbacks."""
+    preds = _mock_gw_predictions(squad, gameweek)
+    return preds, {
+        "model_available": True,
+        "fallback_player_ids": [],
+        "total_players": len(squad),
+    }
+
+
+def _mock_gw_meta_unavailable(squad, gameweek=None):
+    """V8 path down — every player scored via the placeholder chain."""
+    preds = _mock_gw_predictions(squad, gameweek)
+    return preds, {
+        "model_available": False,
+        "fallback_player_ids": [str(p["id"]) for p in squad],
+        "total_players": len(squad),
+    }
+
+
+def _mock_gw_meta_partial(squad, gameweek=None):
+    """V8 up, but two players had no feature row and fell back."""
+    preds = _mock_gw_predictions(squad, gameweek)
+    return preds, {
+        "model_available": True,
+        "fallback_player_ids": ["3", "7"],
+        "total_players": len(squad),
+    }
+
+
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 @patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_valid(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
@@ -79,7 +110,7 @@ def test_recommend_lineup_valid(mock_explain, mock_predict, mock_verify_token, a
     assert bench_orders == [1, 2, 3, 4]
 
 
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 def test_recommend_lineup_invalid_squad_size(mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()[:10]  # Only 10 players
     resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
@@ -87,7 +118,7 @@ def test_recommend_lineup_invalid_squad_size(mock_predict, mock_verify_token, au
     assert "15" in resp.json()["detail"]
 
 
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 @patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_with_formation(mock_explain, mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
@@ -106,7 +137,7 @@ def test_recommend_lineup_with_formation(mock_explain, mock_predict, mock_verify
     assert pos_counts == {"GK": 1, "DEF": 3, "MID": 5, "FWD": 2}
 
 
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 def test_recommend_lineup_invalid_formation(mock_predict, mock_verify_token, auth_headers):
     squad = _make_squad()
     resp = client.post(
@@ -118,7 +149,7 @@ def test_recommend_lineup_invalid_formation(mock_predict, mock_verify_token, aut
 
 
 @patch("src.fpl_api.get_current_gameweek", return_value=12)
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 @patch("src.weekly_explainer.explain_weekly_squad", return_value={})
 def test_recommend_lineup_null_gameweek_returns_resolved(
     mock_explain, mock_predict, mock_gw, mock_verify_token, auth_headers
@@ -134,7 +165,7 @@ def test_recommend_lineup_null_gameweek_returns_resolved(
     assert data["gameweek"] == 12
 
 
-@patch("src.gameweek_predictor.predict_gameweek_points", side_effect=_mock_gw_predictions)
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
 @patch("src.weekly_explainer.explain_weekly_squad", side_effect=RuntimeError("boom"))
 def test_recommend_lineup_explanation_failure_non_fatal(
     mock_explain, mock_predict, mock_verify_token, auth_headers
@@ -145,3 +176,43 @@ def test_recommend_lineup_explanation_failure_non_fatal(
     # Explanations should be empty but response still valid
     data = resp.json()
     assert len(data["starters"]) == 11
+
+
+# ── TC-06: data-staleness / fallback warnings ──────────────────────────
+
+
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_meta_unavailable)
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
+def test_recommend_lineup_warns_when_model_unavailable(
+    mock_explain, mock_predict, mock_verify_token, auth_headers
+):
+    squad = _make_squad()
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["warnings"]  # non-empty
+    assert any("model unavailable" in w.lower() for w in data["warnings"])
+
+
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_meta_partial)
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
+def test_recommend_lineup_warns_on_partial_fallback(
+    mock_explain, mock_predict, mock_verify_token, auth_headers
+):
+    squad = _make_squad()
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert any("2 player" in w for w in data["warnings"])
+
+
+@patch("src.gameweek_predictor.predict_gameweek_points_with_meta", side_effect=_mock_gw_with_meta)
+@patch("src.weekly_explainer.explain_weekly_squad", return_value={})
+def test_recommend_lineup_no_warning_when_healthy(
+    mock_explain, mock_predict, mock_verify_token, auth_headers
+):
+    squad = _make_squad()
+    resp = client.post("/lineup/recommend", json={"squad": squad}, headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["warnings"] == []

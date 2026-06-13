@@ -236,20 +236,43 @@ def _load_feature_table() -> Optional[pd.DataFrame]:
 # ──────────────────────────────────────────────────────────────────────────────
 # Public API
 # ──────────────────────────────────────────────────────────────────────────────
-def predict_gameweek_points(
+def predict_gameweek_points_with_meta(
     squad: list[dict],
     gameweek: int | None = None,
-) -> dict[str, float]:
-    """Predict per-player gameweek points for every player in *squad*.
+) -> tuple[dict[str, float], dict]:
+    """Predict per-player gameweek points and report degradation metadata.
 
-    For each player: look up the most recent row in the V8 feature table by
-    FPL element ID, run the position's CatBoost model, clip to the position's
-    range. Players with no row in the feature table fall back to the placeholder
-    chain (ep_next → points_per_game → pred/38). Total model+feature-table
-    loading failure also degrades to the placeholder chain.
+    This holds the real prediction logic; :func:`predict_gameweek_points` is a
+    thin wrapper around it that drops the metadata. Prediction behaviour is
+    identical to the documented contract — for each player: look up the most
+    recent row in the V8 feature table by FPL element ID, run the position's
+    CatBoost model, clip to the position's range. Players with no row in the
+    feature table fall back to the placeholder chain (ep_next → points_per_game
+    → pred/38). Total model+feature-table loading failure also degrades to the
+    placeholder chain.
+
+    Returns
+        ``(predictions, meta)`` where ``predictions`` maps ``str(id)`` →
+        predicted gameweek points and ``meta`` describes how much of the result
+        came from V8 vs. the placeholder fallback, so callers can surface a
+        data-staleness warning:
+
+            - ``"model_available"`` (bool): True iff the V8 path is usable
+              (models loaded, feature table loaded, ``element`` column present).
+            - ``"fallback_player_ids"`` (list[str]): ``str(id)`` of every player
+              that did NOT get a V8 prediction, in squad order.
+            - ``"total_players"`` (int): ``len(squad)``.
     """
     models = _load_models()
     feature_table = _load_feature_table()
+
+    # Whether the V8 path is usable at all. Mirrors the per-element index gate
+    # below; also drives the "model unavailable" warning surfaced by callers.
+    model_available = (
+        models is not None
+        and feature_table is not None
+        and "element" in feature_table.columns
+    )
 
     # Build the per-element index for the requested gameweek.
     #
@@ -260,7 +283,7 @@ def predict_gameweek_points(
     # to the latest row overall is reserved for GW=1 (or when no prior row
     # exists at all).
     rows_by_element: dict[int, pd.Series] = {}
-    if models is not None and feature_table is not None and "element" in feature_table.columns:
+    if model_available:
         rows_by_element = _rows_by_element(feature_table, gameweek)
 
     predictions: dict[str, float] = {}
@@ -310,7 +333,31 @@ def predict_gameweek_points(
             pid = str(player["id"])
             predictions[pid] = _placeholder_predict(player, fpl_players, fpl_by_name, fpl_list)
 
-    return predictions
+    meta = {
+        "model_available": model_available,
+        "fallback_player_ids": [str(p["id"]) for p in fallback_players],
+        "total_players": len(squad),
+    }
+    return predictions, meta
+
+
+def predict_gameweek_points(
+    squad: list[dict],
+    gameweek: int | None = None,
+) -> dict[str, float]:
+    """Predict per-player gameweek points for every player in *squad*.
+
+    For each player: look up the most recent row in the V8 feature table by
+    FPL element ID, run the position's CatBoost model, clip to the position's
+    range. Players with no row in the feature table fall back to the placeholder
+    chain (ep_next → points_per_game → pred/38). Total model+feature-table
+    loading failure also degrades to the placeholder chain.
+
+    Thin wrapper over :func:`predict_gameweek_points_with_meta` that drops the
+    degradation metadata, preserving the documented public contract.
+    """
+    preds, _ = predict_gameweek_points_with_meta(squad, gameweek)
+    return preds
 
 
 def get_feature_rows(

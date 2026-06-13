@@ -23,7 +23,7 @@ def recommend_lineup(
     current_user: dict = Depends(get_current_user),
 ) -> LineupRecommendResponse:
     from src.fpl_api import get_current_gameweek
-    from src.gameweek_predictor import PREDICTOR_VERSION, predict_gameweek_points
+    from src.gameweek_predictor import PREDICTOR_VERSION, predict_gameweek_points_with_meta
     from src.lineup_optimizer import optimize_lineup
 
     # Convert request models to plain dicts for src/ functions
@@ -34,8 +34,22 @@ def recommend_lineup(
     if resolved_gameweek is None:
         resolved_gameweek = get_current_gameweek()
 
-    # Predict gameweek points
-    gw_predictions = predict_gameweek_points(squad, resolved_gameweek)
+    # Predict gameweek points (with degradation metadata so we can warn the
+    # user when predictions fell back to season-average estimates — TC-06).
+    gw_predictions, meta = predict_gameweek_points_with_meta(squad, resolved_gameweek)
+
+    warnings: list[str] = []
+    if not meta["model_available"]:
+        warnings.append(
+            "Weekly prediction model unavailable — these picks use season-average "
+            "estimates and may be less accurate. Try again later."
+        )
+    elif meta["fallback_player_ids"]:
+        n = len(meta["fallback_player_ids"])
+        warnings.append(
+            f"{n} player(s) have no recent gameweek data; their points use "
+            "season-average estimates."
+        )
 
     # Optimize lineup
     try:
@@ -91,4 +105,5 @@ def recommend_lineup(
         starters=starters,
         bench=bench,
         predictor_version=PREDICTOR_VERSION,
+        warnings=warnings,
     )

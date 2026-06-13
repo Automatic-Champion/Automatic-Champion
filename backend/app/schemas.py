@@ -176,6 +176,7 @@ class LineupRecommendResponse(BaseModel):
     starters: list[LineupStarterResponse]
     bench: list[LineupBenchResponse]
     predictor_version: str
+    warnings: list[str] = []
 
 
 # ── Saved Squads schemas ────────────────────────────────────────────

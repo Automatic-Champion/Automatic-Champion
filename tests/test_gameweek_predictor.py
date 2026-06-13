@@ -9,6 +9,7 @@ from src.gameweek_predictor import (
     PREDICTOR_VERSION,
     get_feature_rows,
     predict_gameweek_points,
+    predict_gameweek_points_with_meta,
     _match_fpl_player,
     _normalize_name,
 )
@@ -180,6 +181,29 @@ class TestFPLAPIFailure:
         squad = _make_squad()
         with pytest.raises(TypeError, match="programming bug"):
             predict_gameweek_points(squad)
+
+
+# ---------------------------------------------------------------------------
+# Metadata reporting (TC-06: drives the staleness/fallback warning)
+# ---------------------------------------------------------------------------
+
+@patch("src.gameweek_predictor._load_feature_table", return_value=None)
+@patch("src.gameweek_predictor._load_models", return_value=None)
+@patch("src.gameweek_predictor.get_player_data", return_value={})
+@patch("src.gameweek_predictor.get_current_gameweek", return_value=10)
+def test_with_meta_reports_model_unavailable(_mock_gw, _mock_players, _no_models, _no_table):
+    """When the V8 loaders are unavailable, the meta dict reports the
+    degradation: model_available False, every player flagged as a fallback,
+    and a prediction still returned for each player."""
+    squad = _make_squad()
+    preds, meta = predict_gameweek_points_with_meta(squad, gameweek=10)
+
+    assert meta["model_available"] is False
+    assert meta["total_players"] == len(squad)
+    assert set(meta["fallback_player_ids"]) == {str(p["id"]) for p in squad}
+    # Predictions still produced for everyone (placeholder chain).
+    for player in squad:
+        assert str(player["id"]) in preds
 
 
 # ---------------------------------------------------------------------------
