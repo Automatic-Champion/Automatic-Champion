@@ -7,7 +7,7 @@ Predicts how many FPL points a player will score **next gameweek**, given their 
 ## Folder Structure
 
 ```
-weekly_model_data/
+Weekly Model/
 ├── production/
 │   ├── models/
 │   │   ├── model_GK.cbm
@@ -83,7 +83,7 @@ Test:              2024-25  ← reported numbers above
 from catboost import CatBoostRegressor, Pool
 
 model = CatBoostRegressor()
-model.load_model('weekly_model_data/production/models/model_MID.cbm')
+model.load_model('Weekly Model/production/models/model_MID.cbm')
 
 # team and opponent_team must be strings
 pred = model.predict(Pool(X, cat_features=['team', 'opponent_team']))
@@ -94,7 +94,7 @@ pred = model.predict(Pool(X, cat_features=['team', 'opponent_team']))
 ## How to Reproduce
 
 ```bash
-cd weekly_model_data/production
+cd "Weekly Model/production"
 source ../../.venv/bin/activate
 
 # Rebuild data
