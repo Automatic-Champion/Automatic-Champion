@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-Automatic Champion is a Fantasy Premier League (FPL) squad optimizer — a B.Sc. Software Engineering final project (Afeka College). It uses ML models to predict player performance and integer linear programming (ILP) to build optimal squads under FPL constraints.
+Automatic Champion is a Fantasy Premier League (FPL) squad optimizer — a B.Sc. Software Engineering final project (Afeka College). It uses ML models to predict player performance and integer linear programming (ILP) to build optimal squads under FPL constraints. Delivered as a web app with Firebase-authenticated accounts that persist named squads.
 
 **Authors:** Yuval Davidovits, Yuval Garzon
 **Deadline:** July 17–20, 2026 (final hand-in + defense)
@@ -13,59 +13,83 @@ Automatic Champion is a Fantasy Premier League (FPL) squad optimizer — a B.Sc.
 ## Repo Structure
 
 ```
-src/              Core library — shared by backend and frontend (DO NOT duplicate logic)
-  team_builder.py   ILP optimizer (OR-Tools), prediction, constraint validation, full squad builder
-  explainer.py      Explanation service — feature importance with human-readable text
-  fpl_api.py        FPL API wrapper (bootstrap-static, fixtures, caching)
-  gameweek_predictor.py  GW points predictor (placeholder-v1, uses FPL ep_next/ppg fallback)
-  lineup_optimizer.py    Lineup optimizer — ILP picks best 11 from 15, captain/VC, bench order
-cli/              CLI tools
-  build_team.py     Interactive menu-driven team builder (early prototype)
-  test_backend.py   Full interactive CLI to test backend API (UC1 + UC2)
-backend/          FastAPI server + PostgreSQL
+src/                       Core library — shared by backend and CLI (DO NOT duplicate logic)
+  team_builder.py             ILP optimizer (OR-Tools), prediction, constraint validation, full squad builder
+  explainer.py                Seasonal explanation service (RandomForest feature importance + human-readable text)
+  weekly_explainer.py         Weekly explanation service (per-player SHAP over the V8 features the predictor used)
+  fpl_api.py                  FPL API wrapper (bootstrap-static, fixtures, caching)
+  gameweek_predictor.py       GW points predictor — loads V8 CatBoost models, lazy fallback to ep_next/ppg
+  lineup_optimizer.py         Lineup optimizer — ILP picks best 11 from 15, captain/VC, bench order
+cli/                       CLI tools (reference / prototype only — NOT the deliverable)
+  build_team.py               Interactive menu-driven team builder
+  test_backend.py             Interactive CLI to test backend API (UC1 + UC2)
+backend/                   FastAPI server + PostgreSQL
   app/
-    main.py         FastAPI app, /health endpoint, router registration
-    database.py     SQLAlchemy engine (PostgreSQL)
-    deps.py         Dependency injection (DB session)
-    models.py       ORM models (6 tables)
-    schemas.py      Pydantic request/response schemas (UC1 + UC2)
+    main.py                   FastAPI app, /health, /players, router registration, lifespan-init for Firebase
+    auth.py                   Firebase Admin SDK init + get_current_user FastAPI dependency
+    database.py               SQLAlchemy engine (PostgreSQL)
+    deps.py                   Dependency injection (DB session)
+    models.py                 ORM models (7 tables)
+    schemas.py                Pydantic request/response schemas
     routers/
-      squad.py      POST /squad/generate endpoint (UC1)
-      lineup.py     POST /lineup/recommend endpoint (UC2)
+      squad.py                POST /squad/generate (UC1, auth-protected)
+      lineup.py               POST /lineup/recommend (UC2, auth-protected)
+      saved_squads.py         GET/POST/DELETE /squads (per-user persistence, auth-protected)
     services/
-      optimizer.py  Thin wrapper around src.team_builder.build_full_squad()
+      optimizer.py            Thin wrapper around src.team_builder.build_full_squad()
   scripts/
-    seed_db.py      Seed DB from FPL GitHub CSV data
-training/         ML training pipelines (run manually, produce .joblib files)
-analysis/         One-off analysis, visualization, data prep scripts
-tests/            Automated tests (42 tests across 7 files)
+    seed_db.py                Seed DB from FPL GitHub CSV data
+frontend/                  React + TypeScript + Vite + Tailwind v4 + shadcn/ui + framer-motion
+  src/
+    api/                       Typed API client + types
+    components/                Shared UI: pitch, squad, auth hero, form, common
+    context/                   AuthContext, SquadContext, ThemeContext
+    layout/                    AppHeader (user email, logout, active squad badge), sidebar
+    lib/                       firebase.ts, teamKits.ts (team-name → kit PNG), utils
+    pages/                     SquadBuilder, LineupAdvisor, Login, Register, ForgotPassword
+  public/
+    kits/                      Premier League team kit PNGs (17 teams × 3 variants = 51 files)
+Weekly Model/              V8 weekly prediction model
+  production/
+    models/                    model_{GK,DEF,MID,FWD}.cbm (CatBoost per position)
+    test.csv                   Feature table loaded at inference (21MB, tracked in git)
+    build_data.py              Regenerates train/test from Base Data (Base Data is NOT in git)
+    weeklyModels_Production.ipynb  Training notebook (Optuna 100-trial, 5-fold TimeSeriesSplit)
+  README.md                   V8 docs: data, training methodology, MAE table, experiment history V1–V10
+docs/
+  seasonal_model_report.md    Non-ML-audience writeup of the seasonal RF models
+  seasonal_model_images/      10 PNG charts (actual-vs-predicted, residuals, feature importance, etc.)
+training/                  ML training pipelines for seasonal RF models (run manually, produce .joblib)
+analysis/                  One-off analysis, visualization, data prep scripts
+tests/                     Automated test suite (~74 tests across multiple files)
 data/
-  base/             10 seasons of raw FPL data (2016-17 through 2025-26)
-  historical_exports/  Pre-built training CSVs per season
-  season_comparisons/  Season delta CSVs
-  players_merged_2024-25.csv  Current season player data
-models/           Trained .joblib model files (4 basic RF + 4 advanced)
-outputs/          Generated squad CSVs/JSONs
-visuals/          Generated charts and metrics CSVs
+  base/                       10 seasons of raw FPL data (2016-17 through 2025-26)
+  historical_exports/         Pre-built training CSVs per season
+  season_comparisons/         Season delta CSVs
+  players_merged_2024-25.csv  Current season player table the optimizer reads
+models/                    Trained .joblib files (4 basic RF per position)
+outputs/                   Generated squad CSVs/JSONs
+visuals/                   Generated charts and metrics CSVs
 ```
 
 ## Tech Stack
 
 - **Language:** Python 3.11+
-- **ML:** scikit-learn, XGBoost, LightGBM (position-specific models)
+- **ML (seasonal):** scikit-learn RandomForest per position (GK/DEF/MID/FWD)
+- **ML (weekly):** CatBoost per position — V8 model with built-in SHAP for explanations
 - **Optimization:** Google OR-Tools (SCIP/CBC solver) — Integer Linear Programming
-- **Backend:** FastAPI + SQLAlchemy + PostgreSQL
-- **Frontend:** React + TypeScript + Vite + Tailwind v4 + shadcn/ui + framer-motion (built — UC1, UC2, Login, Register)
-- **Auth:** Firebase email/password (implemented — frontend AuthContext + backend token verification)
+- **Backend:** FastAPI + SQLAlchemy + PostgreSQL + Firebase Admin SDK
+- **Frontend:** React + TypeScript + Vite + Tailwind v4 + shadcn/ui + framer-motion
+- **Auth:** Firebase email/password (frontend AuthContext + backend token verification + ForgotPassword flow)
 - **Data:** pandas, numpy, joblib
 
 ## Key Design Rules
 
-1. **`src/` is the single source of truth** for optimization and prediction logic. The backend imports from `src/`. Never duplicate optimizer code. The `cli/` folder is just an early prototype — all new work goes through the backend API + React frontend.
-2. **The deliverable is a web app.** The report specifies React frontend + FastAPI backend + Firebase auth. The CLI was a mockup to prove the algorithm works. The final product must be the web system.
+1. **`src/` is the single source of truth** for optimization and prediction logic. Both the backend and the CLI prototype import from `src/`. Never duplicate optimizer or predictor code.
+2. **The deliverable is a web app.** React frontend + FastAPI backend + Firebase auth. The CLI is a prototype, not the final product.
 3. **ILP, not greedy.** The backend uses the ILP optimizer from `src/team_builder.py` via a thin wrapper in `backend/app/services/optimizer.py`.
-4. **Explanations are the #1 differentiator.** The report positions transparency/explainability as the core competitive advantage. Every recommendation must include human-readable explanations for why players were selected.
-5. **Position-specific models.** There are 4 separate ML models (GK, DEF, MID, FWD). Use `position_model_*.joblib` (basic RandomForest) — the advanced models have broken DEF/MID files (4.8KB each).
+4. **Explanations are the #1 differentiator.** Every recommendation includes human-readable reasons. Seasonal recommendations use RandomForest feature importance; weekly recommendations use per-player SHAP from the V8 CatBoost model, so the explanation matches the model that actually made the prediction.
+5. **Position-specific models.** Four separate models per use case (seasonal RF, weekly CatBoost), one per position.
 6. **FPL constraints are strict:** budget cap (default 100.0), max 3 players per club, position requirements (2GK/5DEF/5MID/3FWD for full squad), valid formations for starting XI.
 
 ## Two Core Use Cases
@@ -78,11 +102,17 @@ visuals/          Generated charts and metrics CSVs
 - **Status:** COMPLETE end-to-end. ILP optimizer builds 15-player squad. Endpoint returns starters, bench, explanations. React UI live with FIFA-style cards, team kits, glassmorphism, Firebase-auth-gated.
 
 ### UC2 — Recommend Weekly Lineup (starting 11 from existing squad)
-- User provides/loads their current 15-player squad via the **web UI**
-- System validates squad → predicts GW points per player → selects optimal starting XI + bench order
-- Output includes starting 11, formation, bench order, expected points, and **short explanations**
-- Exception flows: invalid squad → highlight issues; missing GW data → offer refresh; model unavailable → fallback
-- **Status:** COMPLETE end-to-end. FPL API fetcher, gameweek predictor (V8 CatBoost models in `Weekly Model/production/`), lineup optimizer (ILP), endpoint all implemented. React UI live with formation override, gameweek picker, captain/VC badges, kit images.
+- User loads a saved squad (or just-generated one from UC1) via the **web UI**
+- System validates squad → predicts GW points per player using **V8 CatBoost** → selects optimal starting XI + bench order
+- Output includes starting 11, formation, bench order, expected points, captain/VC, and **per-player SHAP-based explanations**
+- Exception flows: invalid squad → highlight issues; missing GW data → offer refresh; model unavailable → fallback to ep_next/ppg chain
+- **Status:** COMPLETE end-to-end. V8 CatBoost models (avg MAE 0.98), lineup optimizer (ILP), endpoint all implemented. React UI live with formation override, gameweek picker, captain/VC badges, kit images, SHAP-driven category badges (form, fixture, performance, attacking, defensive, reliability, value, trending).
+
+## Account Features
+
+- **Firebase email/password auth** (login, register, forgot password)
+- **Saved squads:** authenticated users can save up to **10 named squads**, delete them, and switch between them on the Lineup Advisor (squads persist in `saved_squads` table, scoped by Firebase `uid`)
+- Active-squad badge in the header; "Saved as ..." pill on Squad Builder; cross-session loading via `getSavedSquad(id)` → populates `SquadContext`
 
 ## Database (PostgreSQL via Docker)
 
@@ -95,10 +125,10 @@ docker compose down          # Stop Postgres (data persists in pgdata volume)
 
 **Connection:** `DATABASE_URL` env var (default: `postgresql+psycopg2://postgres:postgres@localhost:5432/automatic_champion`)
 
-**6 tables:** User, Constraint_Set, Team, Player, Season_Team, Season_Team_Player.
+**7 tables:** User, Constraint_Set, Team, Player, Season_Team, Season_Team_Player, **SavedSquad** (new — `id`, `user_uid`, `name`, `payload_json`, `created_at`).
 Tables are created via `Base.metadata.create_all()`. Seeded with 20 teams and 784 players (2024-25 season).
 
-**Status:** Schema matches the report ERD. Tables created and seeded. But Constraint_Set.value_json is stored and never read, and Season_Team/Season_Team_Player are written but never queried back.
+**Status:** Schema matches the report ERD plus the new SavedSquad table. Saved squads are fully wired (read + write). `Constraint_Set.value_json` is still stored but never read; `Season_Team` / `Season_Team_Player` are still written but never queried back — neither blocks the deliverable.
 
 ## Running Things
 
@@ -109,30 +139,30 @@ docker compose up -d
 # Activate venv
 source .venv/bin/activate
 
-# Create tables (first time only)
+# Create tables (first time + after model changes)
 python -c "import sys; sys.path.insert(0,'backend'); from app.database import engine, Base; from app.models import *; Base.metadata.create_all(bind=engine)"
 
 # Seed database (first time only)
 python backend/scripts/seed_db.py
 
-# Backend server
-uvicorn backend.app.main:app --reload --port 8000
+# Backend server (needs Firebase credentials env var)
+GOOGLE_APPLICATION_CREDENTIALS=/Users/yuvaldavidovits/firebase-admin-automatic-champion.json \
+  uvicorn backend.app.main:app --reload --port 8000
 
-# Frontend (once built)
+# Frontend
 cd frontend && npm run dev
 
 # Tests
 python -m pytest tests/ -v
 
-# Train models
-python -m training.train_advanced_models
+# Train seasonal models (regenerate .joblib)
 python -m training.train_position_models
 
-# CLI backend tester (interactive — tests UC1 + UC2 against running backend)
-python cli/test_backend.py
+# Retrain weekly V8 (run notebook)
+jupyter lab "Weekly Model/production/weeklyModels_Production.ipynb"
 
-# CLI prototype (reference only — not the deliverable)
-python -m cli.build_team --budget 100 --formation 4-3-3
+# CLI backend tester (interactive)
+python cli/test_backend.py
 ```
 
 ## Test Plan (from report)
@@ -146,73 +176,76 @@ python -m cli.build_team --budget 100 --formation 4-3-3
 | TC-05 | Invalid squad input → block and explain | Partial (validation tests exist) |
 | TC-06 | Missing/stale data → warn and offer options | Partial (FPL API fallback tested) |
 | NFR-01 | 30 requests, average ≤ 20 seconds | Missing (likely passes) |
-| NFR-02 | 5 new users, ≥ 80% success without help | Missing (needs user study) |
+| NFR-02 | 5 new users, ≥ 80% success without help | Missing (can be informal) |
 | NFR-03 | Swap model with dummy → still works | Missing |
+
+**Test files (latest):**
+- `test_full_squad.py` — TC-01 coverage
+- `test_lineup_optimizer.py`, `test_lineup_endpoint.py` — TC-04 coverage; endpoint tests patched for Firebase token mocking
+- `test_gameweek_predictor.py` — V8 inference paths + `get_feature_rows` drift guard
+- `test_weekly_explainer.py` — SHAP-based weekly explanations (6 cases)
+- `test_auth.py` — Firebase auth dependency (9 cases — public/missing/invalid/valid token paths)
+- `test_saved_squads.py` — per-user squad CRUD (13 cases — in-memory SQLite via dependency_overrides)
+- Full suite: **~74 tests** passing
 
 ---
 
 ## Implementation Plan (Phases)
 
-### Phase 1: Foundation Fixes (est. ~8 dev-days)
+### Phase 1: Foundation Fixes (DONE)
+- [x] **1.1 Create `requirements.txt`**
+- [x] **1.2 Replace backend greedy optimizer with ILP**
+- [x] **1.3 Align model files** — standardized on `position_model_*.joblib`
+- [x] **1.4 Create explanation service** — `src/explainer.py`
+- [x] **1.5 Simplify API contract**
+- [x] **1.6 Add bench builder to `src/`**
+- [x] **1.7 Move DB creds to env var**
+- [x] **1.8 Add solver timeout**
 
-**Goal:** Unify architecture, fix inconsistencies, make the backend production-ready.
+### Phase 2: UC2 — Weekly Lineup (DONE, transfer recommender descoped)
+- [x] **2.1 FPL API data fetcher**
+- [x] **2.2 Gameweek prediction model** — V8 CatBoost per position landed (Yuval Garzon). MAE: GK 0.73 / DEF 1.03 / MID 1.00 / FWD 1.15 / avg 0.98 on 2024-25 held-out test
+- [x] **2.3 Lineup optimizer**
+- [ ] **2.4 Transfer recommender** — descoped
+- [x] **2.5 UC2 API endpoint**
+- [x] **2.6 V8 SHAP-based per-player weekly explanations** — `src/weekly_explainer.py`; explanations now match the model that actually predicted
 
-- [x] **1.1 Create `requirements.txt`** — done: all deps pinned
-- [x] **1.2 Replace backend greedy optimizer with ILP** — done: `optimizer.py` wraps `src.team_builder.build_full_squad()`
-- [x] **1.3 Align model files** — done: standardized on `position_model_*.joblib`
-- [x] **1.4 Create explanation service** — done: `src/explainer.py` with feature importance + human-readable text
-- [x] **1.5 Simplify API contract** — done: backend reads from CSV, request takes `{budget, formation, locked_ids, banned_ids}`
-- [x] **1.6 Add bench builder to `src/`** — done: `build_full_squad()` in `src/team_builder.py` (single ILP solve for 15 players)
-- [x] **1.7 Move DB creds to env var** — done: `database.py` reads `DATABASE_URL` from env
-- [x] **1.8 Add solver timeout** — done: `solver.SetTimeLimit(30_000)` in `_build_solver()`
-
-### Phase 2: UC2 — Weekly Lineup (est. ~10 dev-days)
-
-**Goal:** Implement the entire missing UC2 flow.
-
-- [x] **2.1 FPL API data fetcher** — done: `src/fpl_api.py` with caching, bootstrap-static + fixtures
-- [x] **2.2 Gameweek prediction model** — done: `src/gameweek_predictor.py` (placeholder-v1, ep_next → ppg → pred/38 fallback). Partner building real model.
-- [x] **2.3 Lineup optimizer** — done: `src/lineup_optimizer.py` ILP picks best 11, captain/VC, bench order
-- [ ] **2.4 Transfer recommender** — not started (descoped for now)
-- [x] **2.5 UC2 API endpoint** — done: `POST /lineup/recommend` in `backend/app/routers/lineup.py`
-
-### Phase 3: React Frontend (est. ~14 dev-days)
-
-**Goal:** Build the web app from the report. Two pages matching the two use cases.
-
+### Phase 3: React Frontend (DONE)
 - [x] **3.1 Scaffold** — Vite + React + TypeScript in `/frontend/`
 - [x] **3.2 CORS** — middleware in `backend/app/main.py`
 - [x] **3.3 API client** — `/frontend/src/api/` typed wrappers
-- [x] **3.4 Squad Builder page (UC1)** — budget slider, formation dropdown, locked/banned search, pitch view, explanation panel
-- [x] **3.5 Lineup Advisor page (UC2)** — squad input, formation/gameweek override, captain/VC, explanations
-- [x] **3.6 Shared components** — AppHeader, ExplanationPanel, PlayerNode (FIFA-style with kits), PitchView, BenchCard
+- [x] **3.4 Squad Builder page (UC1)** — budget slider, formation dropdown, locked/banned search, pitch view, explanation panel, save button
+- [x] **3.5 Lineup Advisor page (UC2)** — squad input, formation/gameweek override, captain/VC, explanations, saved-squads loader
+- [x] **3.6 Shared components** — AppHeader (with user email + active squad badge + logout), ExplanationPanel (with form/fixture categories), PlayerNode (FIFA-style with kits), PitchView, BenchCard, SaveSquadDialog, SavedSquadsList
 - [x] **3.7 Demo polish** — premium soccer-themed UI: stadium background, glassmorphism, team kits, framer-motion animations, dark mode default
 
-### Phase 4: Auth & Security (est. ~4 dev-days)
-
+### Phase 4: Auth & Security (DONE)
 - [x] **4.1 Firebase project setup** — email/password enabled
-- [x] **4.2 Frontend auth** — `AuthContext`, `Login`/`Register`/`ForgotPassword` pages (split-screen "pre-match warmup" design), token in API headers, `ProtectedRoute`, logout in header
-- [x] **4.3 Backend token verification** — `backend/app/auth.py` with `get_current_user` FastAPI dependency, protects `/squad/generate` and `/lineup/recommend`. Service account JSON lives at `~/firebase-admin-automatic-champion.json` (outside repo), backend reads it via `GOOGLE_APPLICATION_CREDENTIALS` env var.
+- [x] **4.2 Frontend auth** — `AuthContext` (login/register/logout/resetPassword), `Login`/`Register`/`ForgotPassword` pages with split-screen "pre-match warmup" design, token in API headers, `ProtectedRoute`, logout in header
+- [x] **4.3 Backend token verification** — `backend/app/auth.py` with `get_current_user` FastAPI dependency, lazy init via lifespan so backend imports cleanly without credentials (for CI / fresh clones). Protects `/squad/generate`, `/lineup/recommend`, all `/squads`. Service account JSON at `~/firebase-admin-automatic-champion.json` (outside repo), backend reads via `GOOGLE_APPLICATION_CREDENTIALS`
 
-### Phase 5: Testing (est. ~8 dev-days)
+### Phase 4.5: Saved Squads (DONE)
+- [x] Backend: `SavedSquad` ORM model + `/squads` router (list/create/get/delete) with 10-cap, duplicate-name rejection, silent ownership 404s
+- [x] Frontend: `SaveSquadDialog`, `SavedSquadsList`, `currentSquadName` + `setSquadFromSaved` on `SquadContext`, "Active squad: ..." badge in header
+- [x] Tests: 13 cases in `test_saved_squads.py`
 
-- [ ] **5.1 TC-01** — all 7 formations, full 15-player squad, budget edge cases
+### Phase 5: Testing (~partial)
+- [ ] **5.1 TC-01** — all 7 formations, full 15-player squad, budget edge cases (basic coverage exists, not exhaustive)
 - [ ] **5.2 TC-02** — locked/banned constraints
 - [ ] **5.3 TC-03** — infeasible constraints → descriptive error
-- [ ] **5.4 TC-04** — weekly lineup from valid squad (once UC2 exists)
-- [ ] **5.5 TC-05** — invalid input → block and explain
-- [ ] **5.6 TC-06** — missing/stale data → warn
+- [x] **5.4 TC-04** — weekly lineup from valid squad
+- [ ] **5.5 TC-05** — invalid input → block and explain (partial)
+- [ ] **5.6 TC-06** — missing/stale data → warn (partial)
 - [ ] **5.7 NFR-01** — 30 requests, avg ≤ 20 seconds
 - [ ] **5.8 NFR-03** — swap model with DummyModel → system still works
-- [ ] **5.9 API integration tests** — FastAPI TestClient with test DB
+- [x] **5.9 API integration tests** — auth, saved squads, weekly explainer all covered
 
-### Phase 6: Polish & Documentation (est. ~4 dev-days)
-
-- [ ] **6.1 README** — setup, architecture, how to run, API docs
-- [x] **6.2 Docker Compose** — done: Postgres via `docker-compose.yml`. Backend + frontend containers can be added later.
+### Phase 6: Polish & Documentation
+- [ ] **6.1 README** — setup, architecture, how to run, API docs (NOT YET WRITTEN — needed for grading)
+- [x] **6.2 Docker Compose** — Postgres via `docker-compose.yml`. Backend + frontend containers can be added later.
 - [ ] **6.3 Backend logging** — Python logging module
 - [ ] **6.4 Clean up dead code** — remove greedy optimizer, unused scripts
-- [ ] **6.5 Wire Constraint_Set.value_json** — actually read and apply stored constraints
+- [ ] **6.5 Wire Constraint_Set.value_json** — likely descopable; saved squads now cover the per-user persistence story
 
 ---
 
@@ -220,16 +253,17 @@ python -m cli.build_team --budget 100 --formation 4-3-3
 
 ```
 Student A (backend-focused):  Phase 1 → Phase 2 → Phase 4 backend → Phase 5 backend tests
-Student B (frontend-focused): Phase 3 scaffold (week 5) → Phase 3 UI → Phase 4 frontend → Phase 5 frontend tests
+Student B (frontend-focused): Phase 3 scaffold → Phase 3 UI → Phase 4 frontend → Phase 5 frontend tests
 Both:                         Phase 6
 ```
 
 ## What Can Be Descoped If Time Is Short
 
-- Transfer recommender (Task 2.4) — nice to have
-- Docker Compose (Task 6.2) — run manually for demo
+- Transfer recommender (Task 2.4) — already descoped
 - NFR-02 usability study — do informally with classmates
+- Wire `Constraint_Set.value_json` (Task 6.5) — saved squads cover the persistence story
 - Robust optimization / Monte Carlo — report mentions as enhancement, explicitly optional
+- ML improvements beyond V8 (V11 / Experiment A) — V8 already strong; further tuning is enhancement
 
 ## What Cannot Be Cut
 
@@ -241,7 +275,20 @@ Both:                         Phase 6
 
 ## Known Issues
 
-- `advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4.8KB — likely broken/degenerate (using basic RF models instead)
-- `Constraint_Set.value_json` is stored in DB but never read by the optimizer
-- `src/gameweek_predictor.py` is placeholder-v1 — partner building real GW prediction model
-- Season_Team/Season_Team_Player tables are written but never queried back
+- `advanced_model_DEF.joblib` and `advanced_model_MID.joblib` are only 4.8KB — likely broken/degenerate (basic RF models used instead)
+- `Constraint_Set.value_json` is stored in DB but never read by the optimizer (saved squads supersede this need)
+- `Season_Team` / `Season_Team_Player` tables are written but never queried back
+- `Weekly Model/Base Data/` and `train.csv` (130MB) are gitignored — only `test.csv` (21MB, runtime requirement) ships through git. To retrain V8, the Base Data folder must be obtained separately
+- V11 weekly-model experiment failed (+0.65% MAE vs V8) — files remain untracked under `Weekly Model/production_v11/`. Next attempt would be Experiment A (`opponent_team_season` categorical + slim feature set), not started
+
+## Remaining Work for the July 17–20 Defense
+
+In priority order:
+
+1. **Write the missing tests** — TC-02, TC-03, TC-05, TC-06 (Phase 5). The report's test plan needs them.
+2. **README** — setup + architecture + how-to-run (Phase 6.1). Needed for grading and handoff.
+3. **NFR-01 performance test** — 30 requests, avg ≤ 20s. Likely passes; needs measurement.
+4. **NFR-03 model-swap test** — replace one position model with a dummy that returns a constant; system should still produce a valid squad.
+5. **NFR-02 informal user study** — five classmates, ≥80% success without help.
+6. **Backend logging** (Phase 6.3) and **dead code cleanup** (Phase 6.4).
+7. (Optional) ML enhancements — Experiment A for the weekly model, transfer recommender.
