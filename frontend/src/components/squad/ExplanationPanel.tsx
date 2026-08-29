@@ -1,4 +1,4 @@
-import { X, TrendingUp, Swords, Shield, Clock, Coins, ArrowUpRight, Flame, MapPin } from "lucide-react";
+import { X } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DisplayPlayer } from "@/api/types";
+import {
+  categoryConfig,
+  defaultCategoryConfig,
+} from "@/lib/explanationCategories";
 
 interface ExplanationPanelProps {
   player: DisplayPlayer | null;
@@ -29,19 +33,6 @@ const POSITION_TEXT: Record<string, string> = {
   FWD: "text-red-500 border-red-500/30",
 };
 
-const categoryConfig: Record<string, { color: string; darkColor: string; borderColor: string; icon: React.ReactNode }> = {
-  form: { color: "bg-orange-100 text-orange-800", darkColor: "dark:bg-orange-900/30 dark:text-orange-300", borderColor: "border-l-orange-400", icon: <Flame className="size-3.5" /> },
-  fixture: { color: "bg-indigo-100 text-indigo-800", darkColor: "dark:bg-indigo-900/30 dark:text-indigo-300", borderColor: "border-l-indigo-400", icon: <MapPin className="size-3.5" /> },
-  performance: { color: "bg-blue-100 text-blue-800", darkColor: "dark:bg-blue-900/30 dark:text-blue-300", borderColor: "border-l-blue-400", icon: <TrendingUp className="size-3.5" /> },
-  attacking: { color: "bg-red-100 text-red-800", darkColor: "dark:bg-red-900/30 dark:text-red-300", borderColor: "border-l-red-400", icon: <Swords className="size-3.5" /> },
-  defensive: { color: "bg-green-100 text-green-800", darkColor: "dark:bg-green-900/30 dark:text-green-300", borderColor: "border-l-green-400", icon: <Shield className="size-3.5" /> },
-  reliability: { color: "bg-amber-100 text-amber-800", darkColor: "dark:bg-amber-900/30 dark:text-amber-300", borderColor: "border-l-amber-400", icon: <Clock className="size-3.5" /> },
-  value: { color: "bg-purple-100 text-purple-800", darkColor: "dark:bg-purple-900/30 dark:text-purple-300", borderColor: "border-l-purple-400", icon: <Coins className="size-3.5" /> },
-  trending: { color: "bg-cyan-100 text-cyan-800", darkColor: "dark:bg-cyan-900/30 dark:text-cyan-300", borderColor: "border-l-cyan-400", icon: <ArrowUpRight className="size-3.5" /> },
-};
-
-const defaultConfig = { color: "bg-gray-100 text-gray-800", darkColor: "dark:bg-gray-800 dark:text-gray-300", borderColor: "border-l-gray-400", icon: null };
-
 function ExplanationList({ player }: { player: DisplayPlayer }) {
   const prefersReduced = useReducedMotion();
   const dur = (d: number) => (prefersReduced ? 0 : d);
@@ -56,7 +47,7 @@ function ExplanationList({ player }: { player: DisplayPlayer }) {
       ) : (
         <ul className="space-y-3">
           {player.explanations.map((exp, i) => {
-            const config = categoryConfig[exp.category] ?? defaultConfig;
+            const config = categoryConfig[exp.category] ?? defaultCategoryConfig;
             return (
               <motion.li
                 key={i}
