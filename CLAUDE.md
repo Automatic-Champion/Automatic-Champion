@@ -45,8 +45,8 @@ frontend/                  React + TypeScript + Vite + Tailwind v4 + shadcn/ui +
     components/                Shared UI: pitch, squad, auth hero, form, common
     context/                   AuthContext, SquadContext, ThemeContext
     layout/                    AppHeader (user email, logout, active squad badge), sidebar
-    lib/                       firebase.ts, teamKits.ts (team-name → kit PNG), utils
-    pages/                     SquadBuilder, LineupAdvisor, Login, Register, ForgotPassword
+    lib/                       firebase.ts, teamKits.ts (team-name → kit PNG), explanationCategories.tsx (badge colours/icons shared by ExplanationPanel + Stats Guide), utils
+    pages/                     SquadBuilder, LineupAdvisor, StatsGuide, Login, Register, ForgotPassword
   public/
     kits/                      Premier League team kit PNGs (17 teams × 3 variants = 51 files)
 Weekly Model/              V8 weekly prediction model
@@ -221,6 +221,7 @@ python cli/test_backend.py
 - [x] **3.5 Lineup Advisor page (UC2)** — squad input, formation/gameweek override, captain/VC, explanations, saved-squads loader
 - [x] **3.6 Shared components** — AppHeader (with user email + active squad badge + logout), ExplanationPanel (with form/fixture categories), PlayerNode (FIFA-style with kits), PitchView, BenchCard, SaveSquadDialog, SavedSquadsList
 - [x] **3.7 Demo polish** — premium soccer-themed UI: stadium background, glassmorphism, team kits, framer-motion animations, dark mode default
+- [x] **3.8 Stats Guide page** — third sidebar tab at `/guide`: plain-English reference for the on-screen numbers, the eight explanation badges, and the football stats the reasons cite (xG/xA/ICT/BPS/xGC/…), with client-side search. Static content, no API change
 
 ### Phase 4: Auth & Security (DONE)
 - [x] **4.1 Firebase project setup** — email/password enabled

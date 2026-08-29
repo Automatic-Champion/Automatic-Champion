@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { Link, useLocation } from "react-router";
 
-import { GridIcon, ListIcon } from "../icons";
+import { GridIcon, ListIcon, DocsIcon } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 
 type NavItem = {
@@ -20,6 +20,11 @@ const navItems: NavItem[] = [
     icon: <ListIcon />,
     name: "Lineup Advisor",
     path: "/lineup",
+  },
+  {
+    icon: <DocsIcon />,
+    name: "Stats Guide",
+    path: "/guide",
   },
 ];
 

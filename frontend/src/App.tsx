@@ -3,6 +3,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import SquadBuilder from "./pages/SquadBuilder";
 import LineupAdvisor from "./pages/LineupAdvisor";
+import StatsGuide from "./pages/StatsGuide";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -27,6 +28,7 @@ export default function App() {
           >
             <Route index path="/" element={<SquadBuilder />} />
             <Route path="/lineup" element={<LineupAdvisor />} />
+            <Route path="/guide" element={<StatsGuide />} />
           </Route>
         </Routes>
       </Router>
