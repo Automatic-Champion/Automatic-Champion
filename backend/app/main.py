@@ -1,8 +1,10 @@
+import logging
 from contextlib import asynccontextmanager
 
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from .auth import init_firebase
@@ -11,6 +13,10 @@ from .database import engine
 from .routers.lineup import router as lineup_router
 from .routers.saved_squads import router as saved_squads_router
 from .routers.squad import router as squad_router
+
+logger = logging.getLogger(__name__)
+
+ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
 
 
 @asynccontextmanager
@@ -23,11 +29,34 @@ app = FastAPI(title="Automatic Champion API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return unhandled errors as JSON *with* CORS headers.
+
+    Starlette's ServerErrorMiddleware wraps the CORS middleware, so a bare 500
+    reaches the browser without CORS headers and the frontend reports it as
+    "cannot connect to the backend" instead of the real error. Re-attaching the
+    headers here lets genuine server errors surface in the UI.
+    """
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    headers = {}
+    origin = request.headers.get("origin")
+    if origin in ALLOWED_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
 
 
 @app.get("/health")

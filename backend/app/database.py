@@ -1,7 +1,13 @@
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+# Load machine-local config from the repo-root .env (gitignored). Real shell
+# environment variables take precedence — load_dotenv does not override them.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
