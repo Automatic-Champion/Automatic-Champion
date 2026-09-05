@@ -8,6 +8,7 @@ import ConstraintForm from "../components/form/ConstraintForm";
 import BenchCard from "../components/squad/BenchCard";
 import ExplanationPanel from "../components/squad/ExplanationPanel";
 import SaveSquadDialog from "../components/squad/SaveSquadDialog";
+import SquadLoadingBanner from "../components/squad/SquadLoadingBanner";
 import SummaryBar from "../components/squad/SummaryBar";
 import PitchSVG from "../components/pitch/PitchSVG";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,9 @@ import type {
 } from "../api/types";
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
+/** Hold the loading state for at least this long so the build reads as deliberate. */
+const MIN_LOADING_MS = 3000;
 
 function squadPlayerToDisplay(p: SquadPlayerResponse): DisplayPlayer {
   return {
@@ -144,8 +148,12 @@ export default function SquadBuilder() {
     setSquadResult(null);
     setSelectedPlayerId(null);
 
+    const minHold = new Promise<void>((resolve) =>
+      window.setTimeout(resolve, MIN_LOADING_MS)
+    );
+
     try {
-      const result = await generateSquad(request);
+      const [result] = await Promise.all([generateSquad(request), minHold]);
       setSquadResult(result);
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
@@ -231,6 +239,7 @@ export default function SquadBuilder() {
             {/* Loading state */}
             {isGenerating && (
               <div className="space-y-4">
+                <SquadLoadingBanner durationMs={MIN_LOADING_MS} />
                 <SkeletonSummaryBar />
                 <SkeletonPitch />
                 <SkeletonBench />
